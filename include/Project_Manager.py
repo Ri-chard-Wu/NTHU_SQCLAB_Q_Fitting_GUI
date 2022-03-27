@@ -20,6 +20,7 @@ class Project_Manager():
 
         self._init_data_hdlr()
         self._init_const()
+        self._init_para()
 
     def _init_data_hdlr(self):
         file_names = [join(self.data_hdlr['data_dir'], f) for f in listdir(self.data_hdlr['data_dir']) if isfile(join(self.data_hdlr['data_dir'], f))]
@@ -51,6 +52,10 @@ class Project_Manager():
         
         self.data_hdlr['powers'] = np.linspace(self.const['POWER_HIGH'], self.const['POWER_LOW'], self.const['N_SAMPLE'])
 
+    def _init_para(self):
+        self.para['p']['f0'] = self.data_hdlr['f'][self.data_hdlr['R'].argmin()]
+ 
+    
     def Read_Data(self):
         DISCARD_LEFT = self.data_hdlr['DISCARD_LEFT']
         DISCARD_RIGHT = self.data_hdlr['DISCARD_RIGHT']
@@ -171,7 +176,7 @@ def arg(R,I):
 
 
 
-'''
+
 def Rt(f, Qe, Qi, f0, tau, a, alpha, Ic, Rc):
     x = (f - f0)/f0
     N = ( Qe + 1j * Qe * Qi * 2*x ) * a * np.exp(1j*(2*np.pi*alpha + tau*f*10**(-9)))
@@ -225,7 +230,7 @@ def mag_t(f, Qe, Qi, f0, df, tau, a, alpha, Ic, Rc):
     mag = np.absolute(R + 1j*I)
     return mag
 
-
+'''
 
 
 
