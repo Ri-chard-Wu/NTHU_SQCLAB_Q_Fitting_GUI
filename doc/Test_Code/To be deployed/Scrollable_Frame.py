@@ -119,26 +119,27 @@ from tkinter import ttk
 root = tk.Tk()
 container = ttk.Frame(root)
 
-canvas = tk.Canvas(container, relief=tk.RAISED,borderwidth=5,fill=None)
-scrollbar = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
-scrollable_frame = ttk.Frame(canvas, relief=tk.RAISED,borderwidth=5,fill=None)
 
+canvas = tk.Canvas(container, width=430)
+scrollbar = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
+
+
+scrollable_frame = ttk.Frame(canvas, relief=tk.RAISED,borderwidth=5, fill=None)
 scrollable_frame.bind(
     "<Configure>",
-    lambda e: canvas.configure(
-        scrollregion=canvas.bbox("all")
-    )
-)
+    lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
 
-canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+canvas.create_window((0, 0), height=0, width=0, window=scrollable_frame, anchor="center")
 
 canvas.configure(yscrollcommand=scrollbar.set)
 
 for i in range(50):
-    ttk.Label(scrollable_frame, text="Sample scrolling label").pack()
+    frame = ttk.Frame(scrollable_frame, relief=tk.RAISED,borderwidth=5,fill=None)
+    frame.pack()
+    ttk.Label(frame, text="Sample scrollfffffffffffffmple scrollfffffffffffffmple scrollffffffffffffffffffing label").pack()
 
 container.pack()
-canvas.pack(side="left", fill="both", expand=True)
+canvas.pack(side="left", fill="y", expand=True)
 scrollbar.pack(side="right", fill="y")
 
 root.mainloop()
