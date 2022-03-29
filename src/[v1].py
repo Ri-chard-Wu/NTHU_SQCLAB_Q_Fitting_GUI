@@ -25,9 +25,9 @@ data_hdlr = {'data_sel': 3,
         'DISCARD_RIGHT': 600,
         'POWER_LEFT': {0:-10, 1:-20, 2:10, 3:-10, 4:-20, 5:10} ,
         'POWER_RIGHT': {0:-20, 1:-30, 2:-10, 3:-20, 4:-30, 5:-10},
-        'Q':{'Qi':[],
-             'Qe':[],
-             'Qtot':[]},
+        'Q':{'Qi':{},
+             'Qe':{},
+             'Qtot':{}},
         
         }
 data_hdlr['log_file'] = '../log/6p59_to_6p5925_'+ str(data_hdlr['POWER_LEFT'][data_hdlr['data_sel']]) +'dBm'+'_to_' +str(data_hdlr['POWER_RIGHT'][data_hdlr['data_sel']])+'dBm'+'_'+(str(datetime.now())[:19].replace(':','-').replace(' ','_'))+'.json'  
@@ -172,7 +172,7 @@ pm = Project_Manager(para, const, data_hdlr)
 
 print(pm.data_hdlr['file_names'])
 
-pm.Fit(fit_R = 1)
+#pm.Fit(fit_R = 1)
 
 gui_mngr = GUI_Manager(pm) 
 
