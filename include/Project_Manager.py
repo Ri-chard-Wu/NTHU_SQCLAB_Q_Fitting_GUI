@@ -18,9 +18,71 @@ class Project_Manager():
         self.const = const
         self.data_hdlr = data_hdlr
 
-        self._init_data_hdlr()
+        #self._init_data_hdlr()
+        
+        
+
+
+    def read_dir(self):
+        print("read_dir\n")
+        #print("self.data_hdlr['data_dir']: ", self.data_hdlr['data_dir'], "\n")
+        
+        file_names = [join(self.data_hdlr['data_dir'], f) for f in listdir(self.data_hdlr['data_dir']) if isfile(join(self.data_hdlr['data_dir'], f))]
+        self.data_hdlr['file_names'] = file_names
+
+        print("file_names: ",file_names,"\n")
+        
+
+    def read_file(self):
+        print("read_file\n")
+
+        file = h5py.File(self.data_hdlr['file_name'],'r')
+        self.data_hdlr['file'] = file
+        
+        VNA_name = file['Instruments'][0][4].decode('UTF-8')
+        self.data_hdlr['VNA_name'] = VNA_name
+
         self._init_const()
+        #self._init_para()
+        
+
+
+
+    def read_power(self):
+        print("read_power\n")
+
+        file = self.data_hdlr['file']
+        VNA_name = self.data_hdlr['VNA_name']
+
+        f1 = self.data_hdlr['file']['/Step config/' + VNA_name + ' - Start frequency/Step items'][0][2]
+        f2 = self.data_hdlr['file']['/Step config/' + VNA_name + ' - Stop frequency/Step items'][0][2]
+        f = np.linspace(f1, f2, file['/Traces/' + VNA_name + ' - S21'].shape[0])
+        self.data_hdlr['f'] = f
+
+        R = file['/Traces/' + VNA_name + ' - S21'][:,1, self.data_hdlr['data_power']] # read data
+        I = -file['/Traces/' + VNA_name + ' - S21'][:,0, self.data_hdlr['data_power']]
+        self.data_hdlr['R'] = R
+        self.data_hdlr['I'] = I
+
         self._init_para()
+
+
+    def _init_const(self):
+        
+        self.const['N_SAMPLE'] = self.data_hdlr['file']['/Traces/' + self.data_hdlr['VNA_name'] + ' - S21'].shape[2]
+        
+        #match = re.search('[-]?[0-9]*dBm to [-]?[0-9]*dBm', self.data_hdlr['file_names'][self.data_hdlr['data_sel']])
+        #self.const['POWER_RANGE'] = self.data_hdlr['file_names'][match.span()[0] : match.span()[1]]
+        
+        #self.data_hdlr['powers'] = np.linspace(self.const['POWER_HIGH'], self.const['POWER_LOW'], self.const['N_SAMPLE'])
+
+        self.data_hdlr['powers'] = [str(p[0][0]) for p in self.data_hdlr['file']['/Data/Data'][:]]
+        #print('powers:', self.data_hdlr['powers'])
+
+    def _init_para(self):
+        self.para['p']['f0'] = self.data_hdlr['f'][self.data_hdlr['R'].argmin()]
+ 
+
 
     def _init_data_hdlr(self):
         file_names = [join(self.data_hdlr['data_dir'], f) for f in listdir(self.data_hdlr['data_dir']) if isfile(join(self.data_hdlr['data_dir'], f))]
@@ -40,22 +102,12 @@ class Project_Manager():
         I = -file['/Traces/' + self.data_hdlr['VNA_name'] + ' - S21'][:,0, self.data_hdlr['data_power']]
         self.data_hdlr['R'] = R
         self.data_hdlr['I'] = I
+      
 
         
 
-    def _init_const(self):
-        
-        self.const['N_SAMPLE'] = self.data_hdlr['file']['/Traces/' + self.data_hdlr['VNA_name'] + ' - S21'].shape[2]
-        
-        #match = re.search('[-]?[0-9]*dBm to [-]?[0-9]*dBm', self.data_hdlr['file_names'][self.data_hdlr['data_sel']])
-        #self.const['POWER_RANGE'] = self.data_hdlr['file_names'][match.span()[0] : match.span()[1]]
-        
-        self.data_hdlr['powers'] = np.linspace(self.const['POWER_HIGH'], self.const['POWER_LOW'], self.const['N_SAMPLE'])
 
-    def _init_para(self):
-        self.para['p']['f0'] = self.data_hdlr['f'][self.data_hdlr['R'].argmin()]
  
-    
     def Read_Data(self):
         DISCARD_LEFT = self.data_hdlr['DISCARD_LEFT']
         DISCARD_RIGHT = self.data_hdlr['DISCARD_RIGHT']
