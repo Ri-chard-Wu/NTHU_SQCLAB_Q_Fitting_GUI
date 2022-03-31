@@ -175,7 +175,8 @@ class Project_Manager():
         self.para['Qe'], self.para['Qi'], self.para['f0'], self.para['df'],\
                          self.para['a'], self.para['alpha'], self.para['Ic'] = p'''
 
-    def Fit(self, fit_R=0, fit_I=0, fit_arg=0, fit_mag = 0):
+    #def Fit(self, fit_R=0, fit_I=0, fit_arg=0, fit_mag = 0):
+    def Fit(self, op=""):
         
         R, I, f = self.data_hdlr['R'], self.data_hdlr['I'], self.data_hdlr['f']
 
@@ -187,10 +188,10 @@ class Project_Manager():
         bounds=(lower_bounds, upper_bounds)
 
         cov = []
-        if(fit_R): p, cov = curve_fit(Rt, f, R, p, bounds=bounds)
-        elif(fit_I): p, cov = curve_fit(It, f, I, p, bounds=bounds)
-        elif(fit_arg): p, cov = curve_fit(arg_t, f, np.angle(R+1j*I), p, bounds=bounds)
-        elif(fit_mag): p, cov = curve_fit(mag_t, f, np.absolute(R+1j*I), p, bounds=bounds)
+        if(op=="Fit_Re"): p, cov = curve_fit(Rt, f, R, p, bounds=bounds)
+        elif(op=="Fit_Im"): p, cov = curve_fit(It, f, I, p, bounds=bounds)
+        elif(op=="Fit_arg"): p, cov = curve_fit(arg_t, f, np.angle(R+1j*I), p, bounds=bounds)
+        elif(op=="Fit_mag"): p, cov = curve_fit(mag_t, f, np.absolute(R+1j*I), p, bounds=bounds)
 
         i=0
         for k in self.para['p'].keys():
