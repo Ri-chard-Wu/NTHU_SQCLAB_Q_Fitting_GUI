@@ -6,7 +6,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from setuptools import Command
-from Project_Manager import *
+from Data_Manager import *
 import json
 import time
 from threading import Thread
@@ -14,319 +14,91 @@ from matplotlib.backends.backend_tkagg import (
     FigureCanvasTkAgg,
     NavigationToolbar2Tk
 )
+from decimal import Decimal
 
+from Panel_Manager import*
+from File_Manager import*
+from Fit_Manager import*
 
 PAD_X = 10
 SCALE_LEN = 290
 
-
-
-'''
-        def Fit_Re():
-            self.pm.Fit(fit_R=1)
-            self.Plot_Q()
-            self.plot()
-            
-        next_button = tk.Button(self.button_frame, width = w, height = h,text="Fit_Re",command=Fit_Re)
-        next_button.grid(column=0, row=0, padx=x)
-'''
-class Para_Panel:
-    '''
-    pos: (row, col) of frame
-    '''
-    def __init__(self, gui_mngr, master, pos, para, para_name):
-        self.gui_mngr = gui_mngr
-        self.para = para
-        self.para_name = para_name
-        self.frame = tk.Frame(master, relief=tk.RAISED, borderwidth=5, width=1600, height=200)
-        self.frame.grid(row=pos[0], column=pos[1], padx=5)
-
-        tk.Label(self.frame, text=self.para_name, font=("Arial", 12)).grid(column=15, row=0)
-
-        self._init_button()
-        self._init_entry()
-        self._init_scale()
+data_hdlr = {'data_sel': 3,
+        'data_dir': r'..\data',
+        'data_power': -1,
+        'file_names': "",
+        'file_name':"",
+        'file': 0,
+        'log_dir_today':"",
+        'R':0,
+        'I':0,
+        'f':0,
+        'powers':0,
+        'DISCARD_LEFT': 600,
+        'DISCARD_RIGHT': 600,
+        'POWER_LEFT': {0:-10, 1:-20, 2:10, 3:-10, 4:-20, 5:10} ,
+        'POWER_RIGHT': {0:-20, 1:-30, 2:-10, 3:-20, 4:-30, 5:-10},
+        'Q':{'Qi':{},
+             'Qe':{},
+             'Qtot':{}},
         
-
-    def _init_button(self):
-
-        def confirm():
-            L = self.entry1.get()
-            U = self.entry2.get()
-            
-            if(not(L=="")):
-                self.scale.configure(from_ = L)
-                self.para['LB'][self.para_name] = int(L)
-            if(not(U=="")):
-                self.scale.configure(to = U)
-                self.para['UB'][self.para_name] = int(U)
-
-        self.button = tk.Button(self.frame,text="confirm", font=("Arial", 12),command=confirm)
-        self.button.grid(column=48, row=0, padx=5, pady=(5,0))
-
-    def _init_entry(self):
+        }
         
-        self.entry1 = tk.Entry(self.frame, width=10, font = "Helvetica 10 bold",justify="center")
-        self.entry1.grid(column=5, row=0)
-        self.entry1.insert(0,str(self.para['LB'][self.para_name]))
-        tk.Label(self.frame, text="<", font=("Arial", 12)).grid(column=12, row=0)
-
-        self.entry2 = tk.Entry(self.frame, width=10, font = "Helvetica 10 bold",justify="center")
-        self.entry2.grid(column=25, row=0)
-        self.entry2.insert(0,str(self.para['UB'][self.para_name]))
-        tk.Label(self.frame, text="<", font=("Arial", 12)).grid(column=18, row=0)
-
-    def _init_scale(self):
-
-        def read_scale(scale_value):
-            self.para['p'][self.para_name]=float(scale_value)
-            self.gui_mngr.plot()
-            
-        self.var = tk.DoubleVar()
-        self.scale = tk.Scale(
-            master = self.frame,
-            orient = HORIZONTAL,
-            from_ = self.para['LB'][self.para_name],
-            to = self.para['UB'][self.para_name],
-            resolution = (self.para['UB'][self.para_name]-self.para['LB'][self.para_name])/100000,
-            length = SCALE_LEN,
-            command = read_scale,
-            variable = self.var )
-        self.scale.grid(row=1, column=0, columnspan = 50, padx=5, pady=(0, 5))
+data_hdlr['log_file'] = '../log/6p59_to_6p5925_'+ \
+                        str(data_hdlr['POWER_LEFT'][data_hdlr['data_sel']]) +\
+                        'dBm'+'_to_' +str(data_hdlr['POWER_RIGHT'][data_hdlr['data_sel']])+'dBm'+\
+                        '_'+(str(datetime.now())[:19].replace(':','-').replace(' ','_'))+'.json'  
 
 
 
-class Fit_Button:
-    def __init__(self, master, panel_mngr, name):
-        self.name = name
-        self.panel_mngr = panel_mngr
-        button = tk.Button(master, width = 23, height = 2, text = name, command=self.cmd)
-        button.pack(side = RIGHT, fill = 'x')
 
-    def cmd(self):
-        self.panel_mngr.gui_mngr.pm.Fit(self.name)
-        self.panel_mngr.gui_mngr.Plot_Q()
-        self.panel_mngr.gui_mngr.plot()
-
-
-
-class Panel_Manager:
-    def __init__(self, gui_mngr, master, para):
-        self.gui_mngr = gui_mngr
-        self.master = master
+para = {     
+        'p':{'Qe':10*10**4,
+             'Qi': 35*10**4,
+             'f0': 0, #6.59177*10**9,
+             #'df': 6.59177*10**9,
+             'tau': -105,
+             'a': 0.0041,
+             'alpha': -100.98,
+             'Ic': 0.0004,
+             'Rc': 0.0004},
         
-        self.top = tk.Frame(master, relief=tk.RAISED, borderwidth=2)
-        self.top.pack(side = TOP)
-        self.bottom = tk.Frame(master, relief=tk.RAISED, borderwidth=2)
-        self.bottom.pack(side = BOTTOM)
-
-        self.para = para
-        self.panels = {}
-        self.n_panels = 0
-
-        self._init_scroll_bar()
-        self._init_panel()
-        self._init_Fit_Button(self.bottom)
-        self.fine_adjustment()
+        '%_std':{},
         
+        'LB':{'Qe':5*10**4,
+              'Qi':20*10**4,
+              'f0':0,
+              #'df':10**8,
+              'tau':-200,
+              'a':-10,
+              'alpha':-120,
+              'Ic':-10,
+              'Rc':-10},
         
-    def _init_panel(self):
-        for (k,v) in self.para['p'].items():
-            pos = (self.n_panels, 0)
-            #self.panels[k] = Para_Panel(self.gui_mngr, self.frame, pos, self.para, k)
-            self.panels[k] = Para_Panel(self.gui_mngr, self.scrollable_frame, pos, self.para, k)
-            self.n_panels += 1
+        'UB':{'Qe':30*10**4,
+              'Qi':70*10**4,
+              'f0':10**11,
+              #'df':10**10,
+              'tau':200,
+              'a':10,
+              'alpha':100,
+              'Ic':10,
+              'Rc':10}}
 
-    def _init_scroll_bar(self):
-
-        self.frame = ttk.Frame(self.top)
-        self.frame.pack()
-        
-        #print("\nself.topFrame.winfo_width():",self.gui_mngr.topFrame.winfo_width(),"\n")
-
-        self.canvas = tk.Canvas(self.frame, height = 600, width=330)
-        self.canvas.pack(side="left", fill="y", expand=True)
-
-        self.scrollbar = ttk.Scrollbar(self.frame, orient="vertical", command=self.canvas.yview)
-        self.scrollbar.pack(side="right", fill="y")
-
-        self.scrollable_frame = ttk.Frame(self.canvas, relief=tk.RAISED, borderwidth=5, fill=None)
-        self.scrollable_frame.bind("<Configure>",lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
-
-        self.canvas.create_window((0, 0), height=0, width=0, window = self.scrollable_frame, anchor="center")
-        self.canvas.configure(yscrollcommand=self.scrollbar.set)
-
-    def _init_Fit_Button(self, master):
-        top = tk.Frame(master, relief=tk.RAISED, borderwidth=2)
-        top.pack(side = TOP, fill = 'x')
-        bottom = tk.Frame(master, relief=tk.RAISED, borderwidth=2)
-        bottom.pack(side = BOTTOM, fill = 'x')
-
-        
-        self.btns = {}
-        self.btns["Fit_arg"] =  Fit_Button(top, self, "Fit_arg")
-        self.btns["Fit_mag"] =  Fit_Button(top, self, "Fit_mag")
-        self.btns["Fit_Im"] =  Fit_Button(bottom, self, "Fit_Im")
-        self.btns["Fit_Re"] =  Fit_Button(bottom, self, "Fit_Re")
-
-    def set_scale_values(self):
-        for (k,v) in self.para['p'].items():
-            self.panels[k].var.set(str(self.para['p'][k]))
-
-    def fine_adjustment(self):
-        #self.canvas.config(height =self.gui_mngr.plot_frame.winfo_height() - 45)
-        self.canvas.config(height = 490)
-
-
-        
-
-class DDMenu():
-    def __init__(self, master, gui_mngr, name):
-        self.DISPLAY_LENGTH = 25
-        self.gui_mngr = gui_mngr
-        self.name = name
-        self.contents = [""]
-
-        self.self_frame = tk.Frame(master,relief=tk.RAISED,borderwidth=1)
-        self.self_frame.pack(side=TOP, fill="x")
-        
-        name = "  " + name + " :   "
-        self.label = tk.Label(self.self_frame, text=name, font=("Arial", 12))
-        self.label.pack(side = LEFT)
-        
-        self.face = StringVar()
-        #self.face.set( contents[0][:self.DISPLAY_LENGTH] + (" ..." if len(contents[0]) > self.DISPLAY_LENGTH else ""))
-        self.face.set("")
-        self.menu = OptionMenu(self.self_frame , self.face , *self.contents, command=self.cmd )
-        self.menu.pack(side=RIGHT)
-
-    def cmd(self, v):
-        print("v = ", v , "\n")
-        self.update_data_hldr(v)
-
-        self.face.set( v[:self.DISPLAY_LENGTH] + (" ..." if len(v) > self.DISPLAY_LENGTH else ""))
-        v = self.name + " Selected: " + v + "\n\n"
-        self.gui_mngr.message_box.insert("end",v)
-        
-
-
-    def refresh_options(self):
-        self.menu.destroy()
-        if (self.name == "File"):
-            file_names = self.gui_mngr.pm.data_hdlr['file_names']
-            data_dir =  self.gui_mngr.pm.data_hdlr['data_dir']
-            contents =  [file_name.replace(data_dir, "") for file_name in file_names]
-            
-        elif (self.name == "Power (dBm)"):
-            contents = self.gui_mngr.pm.data_hdlr['powers']
-
-        self.menu = OptionMenu(self.self_frame , self.face , *contents, command=self.cmd )
-        self.menu.pack(side=RIGHT)
-
-
-    def update_data_hldr(self, v):
-        if (self.name == "File"):
-            v = self.gui_mngr.pm.data_hdlr['data_dir'] + v
-            self.gui_mngr.pm.data_hdlr["file_name"] = v
-            self.gui_mngr.pm.read_file()
-
-            self.gui_mngr.basic_info_frame.p.refresh_options()
-            
-
-        elif (self.name == "Power (dBm)"):
-            
-            power_index = self.gui_mngr.pm.data_hdlr["powers"].index(v)
-            self.gui_mngr.pm.data_hdlr['data_power'] = power_index
-            print("self.gui_mngr.pm.data_hdlr['data_power']= ",self.gui_mngr.pm.data_hdlr['data_power'],"\n")
-            self.gui_mngr.pm.read_power()
-            self.plot_data()
-            #self.update_basic_info_box()
-
-    def update_basic_info_box(self):
-        data_hdlr = self.gui_mngr.pm.data_hdlr
-        file_name = data_hdlr["file_name"].replace(data_hdlr["data_dir"], "")
-        f1, f2 = data_hdlr["f"][0], data_hdlr["f"][-1]
-        
-        basic_info = "File Name: " + file_name +\
-                     "\nPowers (dBm): " + str(data_hdlr["powers"]) +\
-                     "\nFrequency Range: " +  str(f1) + " ~ " + str(f2) +\
-                     "\nDiscard Left: " + str(data_hdlr["DISCARD_LEFT"]) +\
-                     "\nDiscard Right: " + str(data_hdlr["DISCARD_RIGHT"]) 
-
-
-
-        self.gui_mngr.basic_info_frame.BasicInfo_box.insert("end", basic_info)
-        
-    def plot_data(self):
-        self.gui_mngr.plot()
-
-class Basic_Info_Frame():
-    def __init__(self, master, gui_mngr):
-        self.gui_mngr = gui_mngr
-        
-        self.top = tk.Frame(master,relief=tk.RAISED,borderwidth=1,fill=None)
-        self.top.pack(side=TOP, fill = "x")
-        self.bottom = tk.Frame(master,relief=tk.RAISED,borderwidth=1,fill=None)
-        self.bottom.pack(side=BOTTOM)
-        
-        self._init_dir()
-        self._init_DDMenu()
-        self._init_info_box()
-        
-
-
-    def _init_dir(self):
-        self.self_frame = tk.Frame(self.top,relief=tk.RAISED,borderwidth=1)
-        self.self_frame.pack(side=TOP, fill="x")
-
-        def browseFiles():
-            dirname = filedialog.askdirectory()
-            self.gui_mngr.pm.data_hdlr['data_dir'] = dirname
-            print("self.gui_mngr.pm.data_hdlr['data_dir'] = ", self.gui_mngr.pm.data_hdlr['data_dir'])
-            self.gui_mngr.pm.read_dir()
-            self.gui_mngr.message_box.insert("end","Data directory selected: " + dirname + "\n\n")
-
-            #self.f.contents = self.gui_mngr.pm.data_hdlr['file_names']
-            #self.f.menu.config(values = self.gui_mngr.pm.data_hdlr['file_names'])
-            self.f.refresh_options()
-            
-            #print("self.f.contents= ",self.f.contents,"\n")
-            
-
-        button = Button(self.self_frame, text = "Select a data directory ...", command = browseFiles)
-        button.pack(pady=5)
-
-
-
-    def _init_DDMenu(self):
-        self.f = DDMenu(self.top, self.gui_mngr, "File")
-        self.p = DDMenu(self.top, self.gui_mngr, "Power (dBm)")
-
-
-
-    def _init_info_box(self):
-        self.BasicInfo_box = Text(self.bottom,
-                        height='34',
-                        width='75',
-                        font='Consolas 9',
-                        )
-        self.BasicInfo_box.pack()
-
-
-
-
-
-
+const = { 'N_SAMPLE':1,
+          'POWER_RANGE':'',
+          'POWER_LOW':-10,
+          'POWER_HIGH':10}
 
 class GUI_Manager:
 
-    def __init__(self, pm):
+    def __init__(self):
         self.window = tk.Tk()
         self.window.title("Resonator S21 Fitting")
         self.window.state("zoomed")  #to make it full screen
         self.window.columnconfigure(0, weight=20, minsize=75)
 
-        self.pm = pm
+        self.dm = Data_Manager(self, para, const, data_hdlr)
 
         self._init_gui()
 
@@ -339,7 +111,7 @@ class GUI_Manager:
     def plot(self):
         
         self.panel_pm.set_scale_values()
-        print("[plot] p=\n",self.pm.para['p'])
+        print("[plot] p=\n",self.dm.para['p'])
         
         self._plot_S21_Fit()
         self._plot_Circle_Fit()
@@ -347,7 +119,7 @@ class GUI_Manager:
         
         
         '''self.panel_pm.set_scale_values()
-        print("[plot] p=\n",self.pm.para['p'])
+        print("[plot] p=\n",self.dm.para['p'])
 
         self.t1 = Thread(target = self._plot_S21_Fit, args = [])
         self.t1.start()
@@ -358,23 +130,33 @@ class GUI_Manager:
     def _plot_S21_Fit(self):
         
         def round_dict(dict, n):
+            rounded_dict = {}
             for (k,v) in dict.items():
-                dict[k] = round(v, n)
-            return dict
+                rounded_dict[k] = round(v, n)
+            return rounded_dict
 
         def SSE(data ,fit):
             e = data - fit
             e = e/np.mean(data)
             return np.sum(e**2).round(3)
-        
-        R, I, f = self.pm.data_hdlr['R'], self.pm.data_hdlr['I'], self.pm.data_hdlr['f']
+
+        def to_sci_nota(dict, n):
+            def format_e(x,n):
+                a = ('%.' + str(n) + 'E') % x
+                return a.split('E')[0].rstrip('0').rstrip('.') + ' E' + a.split('E')[1]
+            tmp = {}
+            for (k,v) in dict.items():
+                tmp[k] = format_e(Decimal(str(v)), 3)
+            return tmp
+
+        R, I, f = self.dm.data_hdlr['R'], self.dm.data_hdlr['I'], self.dm.data_hdlr['f']
         S21_mag = np.sqrt(R**2 + I**2)
         S21_arg = np.angle(R + 1j*I)
         
-        
-        p = [v for (k, v) in self.pm.para['p'].items()]
-        prc_std = round_dict(self.pm.para['%_std'], 5)
-
+       
+        p = [v for (k, v) in self.dm.para['p'].items()]
+        prc_std = round_dict(self.dm.para['%_std'], 5)
+        #print("[plot_S21] p = ",p,"prc_std = ", prc_std)
 
         
         self.ax1[0][0].clear()
@@ -434,30 +216,32 @@ class GUI_Manager:
         self.ax1[1][0].grid(True)
         self.ax1[1][1].grid(True)
         
-        
-        '''p_ = np.array(p).round(2)
-        
-        title = str(self.pm.data_hdlr['data_power'] + 1) + '/' + str(self.pm.const['N_SAMPLE']) + '\n\n' +\
-                        'Qe= ' + str(p_[0]) + ' +/- ' + str(prc_std['Qe']) + '%'\
-                ',   ' + 'Qi= ' + str(p_[1])  + ' +/- ' + str(prc_std['Qi']) + '%'\
-                ',   ' + 'Qtot= ' + str(round(p_[0]*p_[1]/(p_[0]+p_[1]))) + \
-                ',   ' + 'f0= ' + str(p_[2])  + ' +/- ' + str(prc_std['f0']) + '%'\
-                '\n\n'+\
-                         'tau= ' + str(p_[3])  + ' +/- ' + str(prc_std['tau']) + '%'\
-                ',   ' + 'a= ' + str(p_[4])  + ' +/- ' + str(prc_std['a']) + '%'\
-                ',   ' + 'alpha= ' + str(p_[5])  + ' +/- ' + str(prc_std['alpha']) + '%'\
-                ',   ' + 'Ic= ' + str(p_[6])  + ' +/- ' + str(prc_std['Ic']) + '%'
-        self.fig1.suptitle(title)'''
+
+        def update_Fit_Result_Box():     
+            p = to_sci_nota(self.dm.para['p'], 3)
+            prc_std = to_sci_nota(self.dm.para['%_std'], 3)
+            i = 0
+            if(len(self.fit_frame.Fit_Result_Box.get_children(''))):
+                for c in self.fit_frame.Fit_Result_Box.get_children(''):
+                    self.fit_frame.Fit_Result_Box.delete(c)
+            
+            for (k, v) in p.items():              
+                self.fit_frame.Fit_Result_Box.insert(parent='',index='end', iid=i, text='',values=(k, p[k], prc_std[k]))
+                i+=1
+
+        update_Fit_Result_Box()
+        #self.fig1.suptitle(title)
+    
         self.fig1.tight_layout()
         self.Canvas1.draw()
         
     def _plot_Circle_Fit(self):
 
-        R, I, f = self.pm.data_hdlr['R'], self.pm.data_hdlr['I'], self.pm.data_hdlr['f']
+        R, I, f = self.dm.data_hdlr['R'], self.dm.data_hdlr['I'], self.dm.data_hdlr['f']
         S21_mag = np.sqrt(R**2 + I**2)
         S21_arg = np.angle(R + 1j*I)
         
-        p = [v for (k, v) in self.pm.para['p'].items()]
+        p = [v for (k, v) in self.dm.para['p'].items()]
         
         self.ax2.clear()
         self.ax2.clear()
@@ -479,20 +263,16 @@ class GUI_Manager:
         self.Canvas2.draw()
 
     def _Save_Q(self):
-            para = self.pm.para
-            powers = self.pm.data_hdlr['powers']
-            power_selected = powers[self.pm.data_hdlr['data_power']] + "dBm"
-            '''
-            self.pm.data_hdlr['Q']['Qi'][self.pm.data_hdlr['data_power']] = para['p']['Qi']
-            self.pm.data_hdlr['Q']['Qe'][self.pm.data_hdlr['data_power']] = para['p']['Qe']
-            self.pm.data_hdlr['Q']['Qtot'][self.pm.data_hdlr['data_power']] = para['p']['Qi']* para['p']['Qe']/ (para['p']['Qi']+ para['p']['Qe'])
-            '''
-            self.pm.data_hdlr['Q']['Qi'][power_selected] = para['p']['Qi']
-            self.pm.data_hdlr['Q']['Qe'][power_selected] = para['p']['Qe']
-            self.pm.data_hdlr['Q']['Qtot'][power_selected] = para['p']['Qi']* para['p']['Qe']/ (para['p']['Qi']+ para['p']['Qe'])
+            para = self.dm.para
+            powers = self.dm.data_hdlr['powers']
+            power_selected = powers[self.dm.data_hdlr['data_power']] + "dBm"
 
-            #print("\nPop_Q(): Q Saved: Q{}=",self.pm.data_hdlr['Q'],"\n")
-            msg = "\nQ Saved: Q{}=" + str(self.pm.data_hdlr['Q']) + "\n"
+            self.dm.data_hdlr['Q']['Qi'][power_selected] = para['p']['Qi']
+            self.dm.data_hdlr['Q']['Qe'][power_selected] = para['p']['Qe']
+            self.dm.data_hdlr['Q']['Qtot'][power_selected] = para['p']['Qi']* para['p']['Qe']/ (para['p']['Qi']+ para['p']['Qe'])
+
+            #print("\nPop_Q(): Q Saved: Q{}=",self.dm.data_hdlr['Q'],"\n")
+            msg = "\nQ Saved: Q{}=" + str(self.dm.data_hdlr['Q']) + "\n"
             print(msg)
             self.message_box.insert("end", msg)
             self.message_box.see("end")
@@ -523,11 +303,11 @@ class GUI_Manager:
 
         
         
-        #print("in plot_Q, powers= ", powers)
-        POWER_LEFT = self.pm.data_hdlr['POWER_LEFT']
-        POWER_RIGHT = self.pm.data_hdlr['POWER_RIGHT']
-        log_file = self.pm.data_hdlr['log_file']
-        data_sel = self.pm.data_hdlr['data_sel']
+        ''' #print("in plot_Q, powers= ", powers)
+        POWER_LEFT = self.dm.data_hdlr['POWER_LEFT']
+        POWER_RIGHT = self.dm.data_hdlr['POWER_RIGHT']
+        log_file = self.dm.data_hdlr['log_file']
+        data_sel = self.dm.data_hdlr['data_sel']'''
        
         def convert(Q_dict):
             powers = []
@@ -541,10 +321,11 @@ class GUI_Manager:
                 Q['Qtot'].append(Qtot)
             return powers, Q
 
-        #powers = [int(float(power)) for power in self.pm.data_hdlr['powers']]
+        #powers = [int(float(power)) for power in self.dm.data_hdlr['powers']]
         
         #Q = Q_dict_to_list(Q)
-        powers, Q = convert(self.pm.data_hdlr['Q'])
+        print("self.dm.data_hdlr['Q'] = ",self.dm.data_hdlr['Q'])
+        powers, Q = convert(self.dm.data_hdlr['Q'])
         
         self.ax3[0].set_ylabel('Qi')
         self.ax3[0].set_xlabel('Power (dBm)')
@@ -558,15 +339,15 @@ class GUI_Manager:
         self.ax3[2].set_xlabel('Power (dBm)')
         self.ax3[2].plot(powers, Q['Qtot'], marker=cut_star)
         
-        #title = '\nPower Range: ' + str(POWER_LEFT[data_sel]) + 'dBm ~ ' + str(POWER_RIGHT[data_sel]) + 'dBm ' 
-        #print("powers = ",powers)
-        title = '\nPower Range: ' + str(self.pm.data_hdlr['powers'][-1]) + 'dBm ~ ' + str(self.pm.data_hdlr['powers'][0]) + 'dBm ' 
+
+
+        title = '\nPower Range: ' + str(self.dm.data_hdlr['powers'][-1]) + 'dBm ~ ' + str(self.dm.data_hdlr['powers'][0]) + 'dBm ' 
         self.fig3.suptitle(title)
 
         print(title,':\n',Q,'\npowers:\n', powers,'\n\n' )
 
-        with open(log_file, 'w') as f: 
-            json.dump(Q, f)
+        '''with open(log_file, 'w') as f: 
+            json.dump(Q, f)'''
 
         self.fig3.tight_layout()
         
@@ -594,8 +375,9 @@ class GUI_Manager:
 
     def _init_top_1(self, master):
         master.pack(side=RIGHT)
-        self.panel_pm = Panel_Manager(self, master, self.pm.para)
-        #self.panel_pm = Panel_Manager(self, master, self.pm.para)
+        self.tab_Para_Panel, tab = self.tab_wrap(master, 'Parameter Panel')
+        self.panel_pm = Panel_Manager(self, tab , self.dm.para)
+        
         
     def _init_top_2(self, master):
         self.plot_frame = master
@@ -638,14 +420,35 @@ class GUI_Manager:
         self.Canvas3 = FigureCanvasTkAgg(self.fig3, master = self.tab3)                
         self.Canvas3.get_tk_widget().pack()
 
+
+
+    def tab_wrap(self, master, name):
+        tab_ctrl = ttk.Notebook(master)
+        tab_frame = tk.Frame(tab_ctrl, relief=tk.RAISED,borderwidth=5,fill=None)
+        tab_ctrl.add(tab_frame, text = ('  ' + name + '  ') )
+        #tab_ctrl.pack(side=RIGHT)
+        tab_ctrl.pack(fill='x')
+        return tab_ctrl, tab_frame
+
+
+
     def _init_log(self, master):
         self.log_frame = master
         self.log_frame.pack(side=RIGHT)
 
-        self.message_box = Text(self.log_frame,
+
+        '''self.tab_message_box = ttk.Notebook(self.log_frame)
+        tab = tk.Frame(self.tab_message_box, relief=tk.RAISED,borderwidth=5,fill=None)
+        self.tab_message_box.add(tab, text ='  System Messages  ' )
+        self.tab_message_box.pack(side=RIGHT)'''
+
+        self.tab_message_box, tab = self.tab_wrap(self.log_frame, 'System Messages')
+
+        self.message_box = Text( tab ,
                          height='10',
-                         width='120',
-                         font='Consolas 12',
+                         width='140',
+                         #font=('Consolas 13', 'bold'),
+                         font=('TkFixedFont', 11, 'bold')
                          #background="white",
                          #foreground="white",
                          #insertbackground='white'
@@ -653,45 +456,40 @@ class GUI_Manager:
         self.message_box.pack()
 
 
-    def _init_BasicInfo_frame(self, master):
 
-        self.basic_info_frame = Basic_Info_Frame(master, self)
+
+    def _init_BasicInfo_frame(self, master):
+        self.tab_file_frame, tab = self.tab_wrap(master, 'File')
+        self.file_frame = File_Frame(tab, self)
         
-        
-        '''self.BasicInfo_frame = master
-        self.BasicInfo_box = Text(self.BasicInfo_frame,
-                         height='10',
-                         width='75',
-                         font='Consolas 12',
-                         #background="white",
-                         #foreground="white",
-                         #insertbackground='white'
-                         )
-        self.BasicInfo_box.pack()'''
+    def _init_Fit_Frame(self, master):
+        self.tab_fit_frame, tab = self.tab_wrap(master, 'Fit')
+        self.fit_frame = Fit_Frame(tab, self)
 
     def _init_top_3(self, master):
         master.pack(side=RIGHT)
 
-        '''top = tk.Frame(master,relief=tk.RAISED,borderwidth=5,fill=None)
-        top.pack(side=TOP)
-        bottom = tk.Frame(master,relief=tk.RAISED,borderwidth=5,fill=None)
-        bottom.pack(side=BOTTOM)'''
+        top = tk.Frame(master,relief=tk.RAISED,borderwidth=1,fill=None)
+        top.pack(side=TOP, fill='x')
+        bottom = tk.Frame(master,relief=tk.RAISED,borderwidth=1,fill=None)
+        bottom.pack(side=BOTTOM)
 
-        self._init_BasicInfo_frame(master)
+        self._init_BasicInfo_frame(top)
+        self._init_Fit_Frame(bottom)
 
 
 
     def _init_topFrame(self, master):
-        self._init_top_1(tk.Frame(master,relief=tk.RAISED,borderwidth=5,fill=None))
-        self._init_top_2(tk.Frame(master, relief=tk.RAISED,borderwidth=5,fill=None))
-        self._init_top_3(tk.Frame(master, relief=tk.RAISED,borderwidth=5,fill=None))
+        self._init_top_1(tk.Frame(master,relief=tk.RAISED,borderwidth=1,fill=None))
+        self._init_top_2(tk.Frame(master, relief=tk.RAISED,borderwidth=1,fill=None))
+        self._init_top_3(tk.Frame(master, relief=tk.RAISED,borderwidth=1,fill=None))
 
 
 
     def _init_Bottom(self, master):
-        self._init_log(tk.Frame(master, relief=tk.RAISED,borderwidth=5))
+        self._init_log(tk.Frame(master, relief=tk.RAISED,borderwidth=1))
         
-        self.button_frame = tk.Frame(master, relief=tk.RAISED,borderwidth=5)
+        self.button_frame = tk.Frame(master, relief=tk.RAISED,borderwidth=1)
         self.button_frame.pack(side=RIGHT)
 
 
@@ -718,9 +516,9 @@ class GUI_Manager:
         h = 2
         #---------------------------------| Reset_Para Button >
         import copy
-        self.init_para = copy.deepcopy(self.pm.para)
+        self.init_para = copy.deepcopy(self.dm.para)
         def Reset_Para():
-            self.pm.para = copy.deepcopy(self.init_para)
+            self.dm.para = copy.deepcopy(self.init_para)
             self.plot()
             
         next_button = tk.Button(self.button_frame, width = w, height = h, text="Reset_Para",command=Reset_Para)
