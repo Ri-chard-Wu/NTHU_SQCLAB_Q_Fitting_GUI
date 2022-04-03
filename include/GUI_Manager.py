@@ -23,73 +23,6 @@ from Fit_Manager import*
 PAD_X = 10
 SCALE_LEN = 290
 
-data_hdlr = {'data_sel': 3,
-        'data_dir': r'..\data',
-        'data_power': -1,
-        'file_names': "",
-        'file_name':"",
-        'file': 0,
-        'log_dir_today':"",
-        'R':0,
-        'I':0,
-        'f':0,
-        'powers':0,
-        'DISCARD_LEFT': 600,
-        'DISCARD_RIGHT': 600,
-        'POWER_LEFT': {0:-10, 1:-20, 2:10, 3:-10, 4:-20, 5:10} ,
-        'POWER_RIGHT': {0:-20, 1:-30, 2:-10, 3:-20, 4:-30, 5:-10},
-        'Q':{'Qi':{},
-             'Qe':{},
-             'Qtot':{}},
-        
-        }
-        
-data_hdlr['log_file'] = '../log/6p59_to_6p5925_'+ \
-                        str(data_hdlr['POWER_LEFT'][data_hdlr['data_sel']]) +\
-                        'dBm'+'_to_' +str(data_hdlr['POWER_RIGHT'][data_hdlr['data_sel']])+'dBm'+\
-                        '_'+(str(datetime.now())[:19].replace(':','-').replace(' ','_'))+'.json'  
-
-
-
-
-para = {     
-        'p':{'Qe':10*10**4,
-             'Qi': 35*10**4,
-             'f0': 0, #6.59177*10**9,
-             #'df': 6.59177*10**9,
-             'tau': -105,
-             'a': 0.0041,
-             'alpha': -100.98,
-             'Ic': 0.0004,
-             'Rc': 0.0004},
-        
-        '%_std':{},
-        
-        'LB':{'Qe':5*10**4,
-              'Qi':20*10**4,
-              'f0':0,
-              #'df':10**8,
-              'tau':-200,
-              'a':-10,
-              'alpha':-120,
-              'Ic':-10,
-              'Rc':-10},
-        
-        'UB':{'Qe':30*10**4,
-              'Qi':70*10**4,
-              'f0':10**11,
-              #'df':10**10,
-              'tau':200,
-              'a':10,
-              'alpha':100,
-              'Ic':10,
-              'Rc':10}}
-
-const = { 'N_SAMPLE':1,
-          'POWER_RANGE':'',
-          'POWER_LOW':-10,
-          'POWER_HIGH':10}
-
 class GUI_Manager:
 
     def __init__(self):
@@ -98,7 +31,7 @@ class GUI_Manager:
         self.window.state("zoomed")  #to make it full screen
         self.window.columnconfigure(0, weight=20, minsize=75)
 
-        self.dm = Data_Manager(self, para, const, data_hdlr)
+        self.dm = Data_Manager(self)
 
         self._init_gui()
 
@@ -262,31 +195,45 @@ class GUI_Manager:
         self.fig2.tight_layout()
         self.Canvas2.draw()
 
-    def _Save_Q(self):
+    '''def _update_Q(self):
             para = self.dm.para
             powers = self.dm.data_hdlr['powers']
             power_selected = powers[self.dm.data_hdlr['data_power']] + "dBm"
 
-            self.dm.data_hdlr['Q']['Qi'][power_selected] = para['p']['Qi']
-            self.dm.data_hdlr['Q']['Qe'][power_selected] = para['p']['Qe']
-            self.dm.data_hdlr['Q']['Qtot'][power_selected] = para['p']['Qi']* para['p']['Qe']/ (para['p']['Qi']+ para['p']['Qe'])
+            self.dm.para['Q']['Qi'][power_selected] = para['p']['Qi']
+            self.dm.para['Q']['Qe'][power_selected] = para['p']['Qe']
+            self.dm.para['Q']['Qtot'][power_selected] = para['p']['Qi']* para['p']['Qe']/ (para['p']['Qi']+ para['p']['Qe'])
 
-            #print("\nPop_Q(): Q Saved: Q{}=",self.dm.data_hdlr['Q'],"\n")
-            msg = "\nQ Saved: Q{}=" + str(self.dm.data_hdlr['Q']) + "\n"
+            #print("\nPop_Q(): Q Saved: Q{}=",self.dm.para['Q'],"\n")
+            msg = "Q Saved: Q{}=" + str(self.dm.para['Q'])
             print(msg)
-            self.message_box.insert("end", msg)
-            self.message_box.see("end")
+
+            #self.message_box.insert("end", msg)
+            #self.message_box.see("end")
+            self.print(msg)'''
+
+    def _update_Q(self):
+        para = self.dm.para
+        self.dm.para['Q']['Qi'] = para['p']['Qi']
+        self.dm.para['Q']['Qe'] = para['p']['Qe']
+        self.dm.para['Q']['Qtot'] = para['p']['Qi']* para['p']['Qe']/ (para['p']['Qi']+ para['p']['Qe'])
+
+        #print("\nPop_Q(): Q Saved: Q{}=",self.dm.para['Q'],"\n")
+        msg = "Q Saved: Q{}=" + str(self.dm.para['Q'])
+        print(msg)
+
+        #self.message_box.insert("end", msg)
+        #self.message_box.see("end")
+        self.print(msg)
+
+    def print(self, msg):
+        msg = ">>> " + msg + "\n"
+        self.message_box.insert("end", msg)
+        self.message_box.see("end")
 
     def Plot_Q(self):
 
-        def Q_dict_to_list(Q):
-            Q_list = {}
-            Q_list['Qe'] = [v for v in Q['Qe'].values()]
-            Q_list['Qi'] = [v for v in Q['Qi'].values()]
-            Q_list['Qtot'] = [v for v in Q['Qtot'].values()]
-            return Q_list
-
-        self._Save_Q()
+        self._update_Q()
 
         import matplotlib.path as mpath
         star = mpath.Path.unit_regular_star(6)
@@ -301,15 +248,18 @@ class GUI_Manager:
         self.ax3[1].clear()
         self.ax3[2].clear()
 
-        
-        
-        ''' #print("in plot_Q, powers= ", powers)
-        POWER_LEFT = self.dm.data_hdlr['POWER_LEFT']
-        POWER_RIGHT = self.dm.data_hdlr['POWER_RIGHT']
-        log_file = self.dm.data_hdlr['log_file']
-        data_sel = self.dm.data_hdlr['data_sel']'''
-       
         def convert(Q_dict):
+            powers = []
+            Q = {'Qi':[],'Qe':[],'Qtot':[]}
+            for (power, ds) in self.dm.ds.items():
+                powers.append(float(power[:-3]))
+                Q['Qi'].append(ds.para['Q']['Qi'])
+                Q['Qe'].append(ds.para['Q']['Qe'])
+                Q['Qtot'].append(ds.para['Q']['Qtot'])
+
+            return powers, Q
+
+        '''def convert(Q_dict):
             powers = []
             Q = {'Qi':[],'Qe':[],'Qtot':[]}
             for (power, Qi) in Q_dict['Qi'].items():
@@ -319,13 +269,10 @@ class GUI_Manager:
                 Q['Qe'].append(Qe)
             for (power, Qtot) in Q_dict['Qtot'].items():
                 Q['Qtot'].append(Qtot)
-            return powers, Q
+            return powers, Q'''
 
-        #powers = [int(float(power)) for power in self.dm.data_hdlr['powers']]
-        
-        #Q = Q_dict_to_list(Q)
-        print("self.dm.data_hdlr['Q'] = ",self.dm.data_hdlr['Q'])
-        powers, Q = convert(self.dm.data_hdlr['Q'])
+        print("self.dm.para['Q'] = ",self.dm.para['Q'])
+        powers, Q = convert(self.dm.para['Q'])
         
         self.ax3[0].set_ylabel('Qi')
         self.ax3[0].set_xlabel('Power (dBm)')
@@ -339,6 +286,9 @@ class GUI_Manager:
         self.ax3[2].set_xlabel('Power (dBm)')
         self.ax3[2].plot(powers, Q['Qtot'], marker=cut_star)
         
+        self.ax3[0].locator_params(axis='x', nbins=4)
+        self.ax3[1].locator_params(axis='x', nbins=4)
+        self.ax3[2].locator_params(axis='x', nbins=4)
 
 
         title = '\nPower Range: ' + str(self.dm.data_hdlr['powers'][-1]) + 'dBm ~ ' + str(self.dm.data_hdlr['powers'][0]) + 'dBm ' 
@@ -356,18 +306,29 @@ class GUI_Manager:
     def _init_header_bar(self, master):
         master.pack(fill=X)
         def onOpen():
-            print(filedialog.askopenfilename(initialdir = "/",title = "Open file",filetypes = (("Python files","*.py;*.pyw"),("All files","*.*"))))
-        
+            self.file_frame.file_open()
+
+
+            '''file_name = filedialog.askopenfilename(initialdir = "/",title = "Open fitting session",
+                                filetypes = (("Python files","*.py;*.pyw"),("All files","*.*"), ("Json File", "*.json")))
+            with open(file_name, 'r') as f: 
+                session_info = json.load(f)
+                print("data opend is: ", session_info)
+
+                
+            #print("[onOpen] file_name=", file_name)
+            #self.dm.data_hdlr['file_name'] = file_name
+            self.dm.read_session(session_info)'''
+
         def onSave():
-            print(filedialog.asksaveasfilename(initialdir = "/",title = "Save as",filetypes = (("Python files","*.py;*.pyw"),("All files","*.*"))))
+            self.file_frame.file_save()
   
         menubar = tk.Menu(self.window)
 
         filemenu = tk.Menu(menubar, tearoff=0)
-        filemenu.add_command(label="Open", command=onOpen)
-        filemenu.add_command(label="Save", command=onSave)
+        filemenu.add_command(label="Load fitting session", command=onOpen)
+        filemenu.add_command(label="Save fitting session", command=onSave)
         filemenu.add_command(label="Exit", command=self.window.quit)
-
         menubar.add_cascade(label="File", menu=filemenu)
 
         self.window.config(menu=menubar)
@@ -375,7 +336,7 @@ class GUI_Manager:
 
     def _init_top_1(self, master):
         master.pack(side=RIGHT)
-        self.tab_Para_Panel, tab = self.tab_wrap(master, 'Parameter Panel')
+        self.tab_Para_Panel, tab = self.tab_wrap(master, 'Fitting Bounds & Parameter Tuning')
         self.panel_pm = Panel_Manager(self, tab , self.dm.para)
         
         
@@ -437,10 +398,7 @@ class GUI_Manager:
         self.log_frame.pack(side=RIGHT)
 
 
-        '''self.tab_message_box = ttk.Notebook(self.log_frame)
-        tab = tk.Frame(self.tab_message_box, relief=tk.RAISED,borderwidth=5,fill=None)
-        self.tab_message_box.add(tab, text ='  System Messages  ' )
-        self.tab_message_box.pack(side=RIGHT)'''
+
 
         self.tab_message_box, tab = self.tab_wrap(self.log_frame, 'System Messages')
 
@@ -507,21 +465,4 @@ class GUI_Manager:
         self._init_header_bar(tk.Frame(self.window, relief=tk.RAISED, borderwidth=2))
 
 
-
-
-
-        '''
-        x = 5
-        w = 12
-        h = 2
-        #---------------------------------| Reset_Para Button >
-        import copy
-        self.init_para = copy.deepcopy(self.dm.para)
-        def Reset_Para():
-            self.dm.para = copy.deepcopy(self.init_para)
-            self.plot()
-            
-        next_button = tk.Button(self.button_frame, width = w, height = h, text="Reset_Para",command=Reset_Para)
-        next_button.grid(column=2, row=2, padx=x)
-        '''
 

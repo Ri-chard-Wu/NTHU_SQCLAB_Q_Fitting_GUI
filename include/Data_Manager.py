@@ -11,18 +11,126 @@ from tkinter import HORIZONTAL, LEFT
 from datetime import datetime
 import json
 
+
+
+data_hdlr = {'data_sel': 3,
+        'data_dir': r'..\data',
+        'data_power': -1,
+        'file_names': "",
+        'file_name':"",
+        'file': 0,
+        'log_dir_today':"",
+        'R':0,
+        'I':0,
+        'f':0,
+        'powers':0,
+ 
+        
+        }
+        
+
+
+
+para = {     
+        'p':{'Qe':10*10**4,
+             'Qi': 35*10**4,
+             'f0': 0, #6.59177*10**9,
+             #'df': 6.59177*10**9,
+             'tau': -105,
+             'a': 0.0041,
+             'alpha': -100.98,
+             'Ic': 0.0004,
+             'Rc': 0.0004},
+        
+        '%_std':{},
+        
+        'LB':{'Qe':5*10**4,
+              'Qi':20*10**4,
+              'f0':0,
+              #'df':10**8,
+              'tau':-200,
+              'a':-10,
+              'alpha':-120,
+              'Ic':-10,
+              'Rc':-10},
+        
+        'UB':{'Qe':30*10**4,
+              'Qi':70*10**4,
+              'f0':10**11,
+              #'df':10**10,
+              'tau':200,
+              'a':10,
+              'alpha':100,
+              'Ic':10,
+              'Rc':10},
+        'DISCARD_LEFT': 600,
+        'DISCARD_RIGHT': 600,
+            'Q':{'Qi':{},
+             'Qe':{},
+             'Qtot':{}},
+              }
+        
+
+
+
+
+
+class Data_Struct:
+    def __init__(self):
+        self.para = {     
+        'p':{'Qe':10*10**4,
+             'Qi': 35*10**4,
+             'f0': 0, #6.59177*10**9,
+             #'df': 6.59177*10**9,
+             'tau': -105,
+             'a': 0.0041,
+             'alpha': -100.98,
+             'Ic': 0.0004,
+             'Rc': 0.0004},
+        
+        '%_std':{},
+        
+        'LB':{'Qe':5*10**4,
+              'Qi':20*10**4,
+              'f0':0,
+              #'df':10**8,
+              'tau':-200,
+              'a':-10,
+              'alpha':-120,
+              'Ic':-10,
+              'Rc':-10},
+        
+        'UB':{'Qe':30*10**4,
+              'Qi':70*10**4,
+              'f0':10**11,
+              #'df':10**10,
+              'tau':200,
+              'a':10,
+              'alpha':100,
+              'Ic':10,
+              'Rc':10},
+        'DISCARD_LEFT': 600,
+        'DISCARD_RIGHT': 600,
+            'Q':{'Qi':0,
+             'Qe':0,
+             'Qtot':0},
+              }
+        
+
+
+        for (k,v) in self.para['p'].items(): # init percentage std for each para to 0.
+            self.para['%_std'][k] = 0
+
+
+        
+
 class Data_Manager():
-    
-    def __init__(self,gui_mngr, para, const, data_hdlr):
+    def __init__(self,gui_mngr):
         self.para = para
-        #self.p = para['Qe'], para['Qi'], para['f0'], para['df'],para['a'],para['alpha'],para['Ic']
-        self.const = const
         self.data_hdlr = data_hdlr
+        self.ds = {}
         self.gui_mngr = gui_mngr
 
-        #self._init_data_hdlr()
-        
-        
 
     def save_para(self):
         self.save_Q()
@@ -34,7 +142,7 @@ class Data_Manager():
                      '[' +  str(datetime.now())[11:19].replace(':','_').replace(' ','_') + '] '+\
                                         self.data_hdlr['file_name'].split('data')[1][1:-5] + '.json' 
         with open(log_file, 'w') as f: 
-            json.dump(self.data_hdlr['Q'], f)
+            json.dump(self.para['Q'], f)
 
 
     def read_dir(self):
@@ -54,6 +162,33 @@ class Data_Manager():
         self.data_hdlr['log_dir_today'] = log_dir
 
 
+
+    def read_session(self, session_info):
+        '''self.data_hdlr['file_name'] = session_info['file_name']
+        self.data_hdlr['data_dir'] = session_info['data_dir']
+        self.read_file()
+
+        for (power, ds) in self.ds.items():
+            ds.para = session_info[power]
+        self.gui_mngr.file_frame.f.refresh_options()
+        self.gui_mngr.file_frame.p.refresh_options()'''
+        
+        self.gui_mngr.file_frame.f.cmd(session_info['file_name'].replace(session_info['data_dir'], ""))
+        self.data_hdlr['file_name'] = session_info['file_name']
+        self.data_hdlr['data_dir'] = session_info['data_dir']
+        self.read_dir()
+        #self.read_file()
+
+        for (power, ds) in self.ds.items():
+            ds.para = session_info[power]
+        #self.gui_mngr.file_frame.f.refresh_options()
+        #self.gui_mngr.file_frame.p.refresh_options()
+        
+
+        
+
+
+
     def read_file(self):
         print("read_file\n")
 
@@ -63,13 +198,33 @@ class Data_Manager():
         VNA_name = file['Instruments'][0][4].decode('UTF-8')
         self.data_hdlr['VNA_name'] = VNA_name
 
-        self._init_const()
+     
         #self._init_para()
+        self._init_powers()
+        #self._init_Q()
+        self._init_Data_Struct()
+    
+    def _init_Data_Struct(self):
+        for power in self.data_hdlr['powers']:
+            self.ds[(power + 'dBm')] = Data_Struct()
+
+    '''def _init_Q(self):
+        #print("self.data_hdlr['powers'] = ", self.data_hdlr['powers'])
+        for (Q_name, Q_dict) in self.para['Q'].items():   # Init Q all to 0.
+            for power in self.data_hdlr['powers']:
+                Q_dict[(power + 'dBm')] = 0'''
         
+        #for power in self.data_hdlr['powers']:
+            
 
 
 
     def read_power(self):
+        power_to_select = self.data_hdlr['powers'][self.data_hdlr['data_power']]
+        power_to_select  = str(float(power_to_select) ) + "dBm"
+        self.switch_data_struct(power_to_select)
+
+
         print("read_power\n")
 
         file = self.data_hdlr['file']
@@ -86,89 +241,37 @@ class Data_Manager():
         self.data_hdlr['I'] = I
 
         self._init_para()
+        self.gui_mngr.panel_pm.refresh()
 
 
-    def _init_const(self):
-        
-        self.const['N_SAMPLE'] = self.data_hdlr['file']['/Traces/' + self.data_hdlr['VNA_name'] + ' - S21'].shape[2]
-        
-        #match = re.search('[-]?[0-9]*dBm to [-]?[0-9]*dBm', self.data_hdlr['file_names'][self.data_hdlr['data_sel']])
-        #self.const['POWER_RANGE'] = self.data_hdlr['file_names'][match.span()[0] : match.span()[1]]
-        
-        #self.data_hdlr['powers'] = np.linspace(self.const['POWER_HIGH'], self.const['POWER_LOW'], self.const['N_SAMPLE'])
 
+    
+
+
+    def switch_data_struct(self, power_selected):
+
+        print("[switch_data_struct] power_selected = ", power_selected)
+        print("self.ds.keys()", self.ds.keys())
+        self.para = self.ds[power_selected].para
+
+
+    def _init_powers(self):
+        
         self.data_hdlr['powers'] = [str(p[0][0]) for p in self.data_hdlr['file']['/Data/Data'][:]]
-        #print('powers:', self.data_hdlr['powers'])
+
+
+
 
     def _init_para(self):
 
         # Auto-locate f0
         self.para['p']['f0'] = self.data_hdlr['f'][self.data_hdlr['R'].argmin()]
 
-        for (k,v) in self.para['p'].items(): # init percentage std for each para to 0.
-            self.para['%_std'][k] = 0
+        '''for (k,v) in self.para['p'].items(): # init percentage std for each para to 0.
+            self.para['%_std'][k] = 0'''
 
+   
 
-        #print("self.data_hdlr['powers'] = ", self.data_hdlr['powers'])
-        for (Q_name, Q_dict) in self.data_hdlr['Q'].items():   # Init Q all to 0.
-            for power in self.data_hdlr['powers']:
-                Q_dict[(power + 'dBm')] = 0
-        
-        print("After init Q to 0: self.data_hdlr['Q'] = ", self.data_hdlr['Q'])
- 
-
-
-    '''def _init_data_hdlr(self):
-        file_names = [join(self.data_hdlr['data_dir'], f) for f in listdir(self.data_hdlr['data_dir']) if isfile(join(self.data_hdlr['data_dir'], f))]
-        self.data_hdlr['file_names'] = file_names
-        file = h5py.File(file_names[self.data_hdlr['data_sel']],'r')
-        self.data_hdlr['file'] = file
-        
-        VNA_name = file['Instruments'][0][4].decode('UTF-8')
-        self.data_hdlr['VNA_name'] = VNA_name
-
-        f1 = self.data_hdlr['file']['/Step config/' + self.data_hdlr['VNA_name'] + ' - Start frequency/Step items'][0][2]
-        f2 = self.data_hdlr['file']['/Step config/' + self.data_hdlr['VNA_name'] + ' - Stop frequency/Step items'][0][2]
-        f = np.linspace(f1, f2, file['/Traces/' + self.data_hdlr['VNA_name'] + ' - S21'].shape[0])
-        self.data_hdlr['f'] = f
-
-        R = file['/Traces/' + self.data_hdlr['VNA_name'] + ' - S21'][:,1, self.data_hdlr['data_power']] # read data
-        I = -file['/Traces/' + self.data_hdlr['VNA_name'] + ' - S21'][:,0, self.data_hdlr['data_power']]
-        self.data_hdlr['R'] = R
-        self.data_hdlr['I'] = I
-
-
-        print("[_init_data_hdlr] self.data_hdlr['data_dir'] = ", self.data_hdlr['data_dir'])'''
-        
-      
-
-        
-
-
- 
-    '''def Read_Data(self):
-        DISCARD_LEFT = self.data_hdlr['DISCARD_LEFT']
-        DISCARD_RIGHT = self.data_hdlr['DISCARD_RIGHT']
-
-        R = self.data_hdlr['file']['/Traces/' + self.data_hdlr['VNA_name'] + ' - S21'][:,1, self.data_hdlr['data_power']][DISCARD_LEFT:][:-DISCARD_RIGHT]
-        I = -self.data_hdlr['file']['/Traces/' + self.data_hdlr['VNA_name'] + ' - S21'][:,0, self.data_hdlr['data_power']][DISCARD_LEFT:][:-DISCARD_RIGHT]
-        self.data_hdlr['R'] = R
-        self.data_hdlr['I'] = I
-        
-        f1 = self.data_hdlr['file']['/Step config/' + self.data_hdlr['VNA_name'] + ' - Start frequency/Step items'][0][2]
-        f2 = self.data_hdlr['file']['/Step config/' + self.data_hdlr['VNA_name'] + ' - Stop frequency/Step items'][0][2]
-
-        n_data_point = self.data_hdlr['file']['/Traces/' + self.data_hdlr['VNA_name'] + ' - S21'].shape[0]
-        df = (f2 - f1)/n_data_point
-        f1 = f1 + DISCARD_LEFT*df
-        f2 = f2 - DISCARD_RIGHT*df
-
-        f = np.linspace(f1, f2, len(R))
-        self.data_hdlr['f'] = f
-        
-
-        return R, I, f'''
- 
     def Data_Preprocessing(self):
         R = self.data_hdlr['R']
         I = self.data_hdlr['I']
@@ -198,22 +301,6 @@ class Data_Manager():
         self.data_hdlr['R'], self.data_hdlr['I'], self.data_hdlr['f'] = R, I, f
         
 
-    '''def Fit(self, fit_R=0, fit_I=0):
-        R, I, f = self.data_hdlr['R'], self.data_hdlr['I'], self.data_hdlr['f']
-
-        para = self.para
-        p = para['Qe'], para['Qi'], para['f0'], para['df'],para['a'],para['alpha'],para['Ic']
-        
-        bounds=([    0,     0,      0, -np.inf, -np.inf, -np.inf, -np.inf],
-                [10**7, 10**7, 10**11, +np.inf, +np.inf, +np.inf, +np.inf])
-        
-        
-        if(fit_R): p = curve_fit(Rt, f, R, p, bounds=bounds)[0]
-        elif(fit_I): p = curve_fit(It, f, I, p, bounds=bounds)[0]
-        self.para['Qe'], self.para['Qi'], self.para['f0'], self.para['df'],\
-                         self.para['a'], self.para['alpha'], self.para['Ic'] = p'''
-
-    #def Fit(self, fit_R=0, fit_I=0, fit_arg=0, fit_mag = 0):
     def Fit(self, op=""):
         
         R, I, f = self.data_hdlr['R'], self.data_hdlr['I'], self.data_hdlr['f']
@@ -277,37 +364,3 @@ def mag_t(f, Qe, Qi, f0, tau, a, alpha, Ic, Rc):
     I = It(f, Qe, Qi, f0, tau, a, alpha, Ic, Rc)
     mag = np.absolute(R + 1j*I)
     return mag
-
-'''
-
-def Rt(f, Qe, Qi, f0, df, tau, a, alpha, Ic, Rc):
-    x = (f - f0 - df)/(f0 + df)
-    N = ( Qe + 1j * Qe * Qi * (2*x + 2*df/f0) ) * a * np.exp(1j*alpha)
-    D = Qi + Qe + 1j*2*Qe*Qi*x
-    return np.real(N/D) + Rc
-
-def It(f, Qe, Qi, f0, df, tau, a, alpha, Ic, Rc):
-    x = (f - f0 - df)/(f0 + df)
-    N = ( Qe + 1j * Qe * Qi * (2*x + 2*df/f0) ) * a * np.exp(1j*alpha)
-    D = Qi + Qe + 1j*2*Qe*Qi*x
-    return np.imag(N/D) + Ic
-
-def arg_t(f, Qe, Qi, f0, df, tau, a, alpha, Ic, Rc):
-    R = Rt(f, Qe, Qi, f0, df, tau, a, alpha, Ic, Rc)
-    I = It(f, Qe, Qi, f0, df, tau, a, alpha, Ic, Rc)
-    arg = np.angle(R + 1j*I)
-    return arg
-
-def mag_t(f, Qe, Qi, f0, df, tau, a, alpha, Ic, Rc):
-    R = Rt(f, Qe, Qi, f0, df, tau, a, alpha, Ic, Rc)
-    I = It(f, Qe, Qi, f0, df, tau, a, alpha, Ic, Rc)
-    mag = np.absolute(R + 1j*I)
-    return mag
-
-'''
-
-
-
-
-
-

@@ -26,7 +26,7 @@ class Para_Panel:
     '''
     def __init__(self, gui_mngr, master, pos, para, para_name):
         self.gui_mngr = gui_mngr
-        self.para = para
+        #self.para = para
         self.para_name = para_name
         self.frame = tk.Frame(master, relief=tk.RAISED, borderwidth=5, width=1600, height=200)
         self.frame.grid(row=pos[0], column=pos[1], padx=5)
@@ -46,10 +46,10 @@ class Para_Panel:
             
             if(not(L=="")):
                 self.scale.configure(from_ = L)
-                self.para['LB'][self.para_name] = int(L)
+                self.gui_mngr.dm.para['LB'][self.para_name] = int(L)
             if(not(U=="")):
                 self.scale.configure(to = U)
-                self.para['UB'][self.para_name] = int(U)
+                self.gui_mngr.dm.para['UB'][self.para_name] = int(U)
 
         self.button = tk.Button(self.frame,text="confirm", font=("Arial", 12),command=confirm)
         self.button.grid(column=48, row=0, padx=5, pady=(5,0))
@@ -58,34 +58,38 @@ class Para_Panel:
         
         self.entry1 = tk.Entry(self.frame, width=10, font = "Helvetica 10 bold",justify="center")
         self.entry1.grid(column=5, row=0)
-        self.entry1.insert(0,str(self.para['LB'][self.para_name]))
+        self.entry1.insert(0,str(self.gui_mngr.dm.para['LB'][self.para_name]))
         tk.Label(self.frame, text="<", font=("Arial", 12)).grid(column=12, row=0)
 
         self.entry2 = tk.Entry(self.frame, width=10, font = "Helvetica 10 bold",justify="center")
         self.entry2.grid(column=25, row=0)
-        self.entry2.insert(0,str(self.para['UB'][self.para_name]))
+        self.entry2.insert(0,str(self.gui_mngr.dm.para['UB'][self.para_name]))
         tk.Label(self.frame, text="<", font=("Arial", 12)).grid(column=18, row=0)
 
     def _init_scale(self):
 
         def read_scale(scale_value):
-            self.para['p'][self.para_name]=float(scale_value)
+            self.gui_mngr.dm.para['p'][self.para_name]=float(scale_value)
             self.gui_mngr.plot()
             
         self.var = tk.DoubleVar()
         self.scale = tk.Scale(
             master = self.frame,
             orient = HORIZONTAL,
-            from_ = self.para['LB'][self.para_name],
-            to = self.para['UB'][self.para_name],
-            resolution = (self.para['UB'][self.para_name]-self.para['LB'][self.para_name])/100000,
+            from_ = self.gui_mngr.dm.para['LB'][self.para_name],
+            to = self.gui_mngr.dm.para['UB'][self.para_name],
+            resolution = (self.gui_mngr.dm.para['UB'][self.para_name]-self.gui_mngr.dm.para['LB'][self.para_name])/100000,
             length = SCALE_LEN,
             command = read_scale,
             variable = self.var )
         self.scale.grid(row=1, column=0, columnspan = 50, padx=5, pady=(0, 5))
 
-
-
+    def refresh(self):
+        
+        self.entry1.delete(0, 'end')
+        self.entry1.insert(0,str(self.gui_mngr.dm.para['LB'][self.para_name]))
+        self.entry2.delete(0, 'end')
+        self.entry2.insert(0,str(self.gui_mngr.dm.para['UB'][self.para_name]))
 
 
 
@@ -99,7 +103,7 @@ class Panel_Manager:
         self.bottom = tk.Frame(master)
         self.bottom.pack(side = BOTTOM)
 
-        self.para = para
+       
         self.panels = {}
         self.n_panels = 0
 
@@ -110,10 +114,10 @@ class Panel_Manager:
         
         
     def _init_panel(self):
-        for (k,v) in self.para['p'].items():
+        for (k,v) in self.gui_mngr.dm.para['p'].items():
             pos = (self.n_panels, 0)
-            #self.panels[k] = Para_Panel(self.gui_mngr, self.frame, pos, self.para, k)
-            self.panels[k] = Para_Panel(self.gui_mngr, self.scrollable_frame, pos, self.para, k)
+            #self.panels[k] = Para_Panel(self.gui_mngr, self.frame, pos, self.gui_mngr.dm.para, k)
+            self.panels[k] = Para_Panel(self.gui_mngr, self.scrollable_frame, pos, self.gui_mngr.dm.para, k)
             self.n_panels += 1
 
     def _init_scroll_bar(self):
@@ -137,10 +141,15 @@ class Panel_Manager:
 
 
     def set_scale_values(self):
-        for (k,v) in self.para['p'].items():
-            self.panels[k].var.set(str(self.para['p'][k]))
+        for (k,v) in self.gui_mngr.dm.para['p'].items():
+            self.panels[k].var.set(str(self.gui_mngr.dm.para['p'][k]))
 
     def fine_adjustment(self):
         #self.canvas.config(height =self.gui_mngr.plot_frame.winfo_height() - 45)
         self.canvas.config(height = 530)
+    
+    def refresh(self):
+        self.gui_mngr.print("refresh panel")
+        for (k, v) in self.panels.items():
+            self.panels[k].refresh()
 
