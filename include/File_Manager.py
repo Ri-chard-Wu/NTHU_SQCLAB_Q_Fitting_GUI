@@ -26,7 +26,7 @@ SCALE_LEN = 290
 class DDMenu():
     def __init__(self, master, gui_mngr, name):
         self.DISPLAY_LENGTH = 25
-        self.gui_mngr = gui_mngr
+        self.am = gui_mngr
         self.name = name
         self.contents = [""]
 
@@ -49,19 +49,19 @@ class DDMenu():
 
         self.face.set( v[:self.DISPLAY_LENGTH] + (" ..." if len(v) > self.DISPLAY_LENGTH else ""))
         v = self.name + " Selected: " + v 
-        self.gui_mngr.print(v)
+        self.am.print(v)
         
 
 
     def refresh_options(self):
         self.menu.destroy()
         if (self.name == "File"):
-            file_names = self.gui_mngr.dm.data_hdlr['file_names']
-            data_dir =  self.gui_mngr.dm.data_hdlr['data_dir']
+            file_names = self.am.dm.data_hdlr['file_names']
+            data_dir =  self.am.dm.data_hdlr['data_dir']
             contents =  [file_name.replace(data_dir, "") for file_name in file_names]
             
         elif (self.name == "Power (dBm)"):
-            contents = self.gui_mngr.dm.data_hdlr['powers']
+            contents = self.am.dm.data_hdlr['powers']
 
         self.menu = OptionMenu(self.self_frame , self.face , *contents, command=self.cmd )
         self.menu.pack(side=RIGHT)
@@ -69,34 +69,40 @@ class DDMenu():
 
     def update_data_hldr(self, v):
         if (self.name == "File"):
-            v = self.gui_mngr.dm.data_hdlr['data_dir'] + v
-            self.gui_mngr.dm.data_hdlr["file_name"] = v
-            self.gui_mngr.dm.read_file()
+            v = self.am.dm.data_hdlr['data_dir'] + v
+            self.am.dm.data_hdlr["file_name"] = v
+            self.am.dm.read_file()
 
-            self.gui_mngr.file_frame.p.refresh_options()
+            self.am.file_frame.p.refresh_options()
             
 
         elif (self.name == "Power (dBm)"):
             
-            power_index = self.gui_mngr.dm.data_hdlr["powers"].index(v)
-            self.gui_mngr.dm.data_hdlr['data_power'] = power_index
-            print("self.gui_mngr.dm.data_hdlr['data_power']= ",self.gui_mngr.dm.data_hdlr['data_power'],"\n")
-            self.gui_mngr.dm.read_power()
+            power_index = self.am.dm.data_hdlr["powers"].index(v)
+            self.am.dm.data_hdlr['data_power'] = power_index
+            print("self.am.dm.data_hdlr['data_power']= ",self.am.dm.data_hdlr['data_power'],"\n")
+            self.am.dm.read_power()
             self.plot_data()
             #self.update_basic_info_box()
-
-
-        
     def plot_data(self):
-        self.gui_mngr.plot()
+        self.am.plot()
+
+
+
+
+
+
+
+
+
 
 
 
 
 
 class File_Frame():
-    def __init__(self, master, gui_mngr):
-        self.gui_mngr = gui_mngr
+    def __init__(self, master, am):
+        self.am = am
         
         self.top = tk.Frame(master,relief=tk.RAISED,borderwidth=1,fill=None)
         self.top.pack(side=TOP, fill = "x")
@@ -108,15 +114,21 @@ class File_Frame():
         self._init_closing_setting()
         #self._init_info_box()
     
+
+
     def _init_closing_setting(self):
-        self.gui_mngr.window.protocol("WM_DELETE_WINDOW", self._on_closing)
+        self.am.window.protocol("WM_DELETE_WINDOW", self._on_closing)
     
+
+
     def _on_closing(self):
         if messagebox.askokcancel("Quit", "Do you want to save the current state of this fitting session before exiting?"):
             self.file_save()
-            self.gui_mngr.window.destroy()
+            self.am.window.destroy()
         else:
-            self.gui_mngr.window.destroy()
+            self.am.window.destroy()
+
+
 
     def file_save(self):
         file_name = filedialog.asksaveasfile(mode='w', defaultextension=".json")
@@ -124,18 +136,20 @@ class File_Frame():
             return
         file_name = file_name.name
         print("file_name = ", file_name)
-        self.gui_mngr.print(("file_name = " + file_name))
+        self.am.print(("file_name = " + file_name))
 
         with open(file_name, 'w') as f: 
             to_save = {}
-            to_save['file_name'] = self.gui_mngr.dm.data_hdlr['file_name']
-            to_save['data_dir'] = self.gui_mngr.dm.data_hdlr['data_dir']
-            print("[file_save] self.gui_mngr.dm.data_hdlr = ", self.gui_mngr.dm.data_hdlr) 
-            for (k, v) in self.gui_mngr.dm.ds.items(): 
+            to_save['file_name'] = self.am.dm.data_hdlr['file_name']
+            to_save['data_dir'] = self.am.dm.data_hdlr['data_dir']
+            print("[file_save] self.am.dm.data_hdlr = ", self.am.dm.data_hdlr) 
+            for (k, v) in self.am.dm.ds.items(): 
                 to_save[k] = v.para  
             print("to_save[k] = ", to_save[k])
             json.dump(to_save, f)
     
+
+
     def file_open(self):
         file_name = filedialog.askopenfilename(initialdir = "/",title = "Open fitting session",
                             filetypes = (("Json File", "*.json"),("Python files","*.py;*.pyw"),("All files","*.*")))
@@ -148,8 +162,10 @@ class File_Frame():
             
         #print("[onOpen] file_name=", file_name)
         #self.dm.data_hdlr['file_name'] = file_name
-        self.gui_mngr.dm.read_session(session_info)
+        self.am.dm.read_session(session_info)
             
+
+
     def _init_dir(self):
         self.self_frame = tk.Frame(self.top,relief=tk.RAISED,borderwidth=1)
         self.self_frame.pack(side=TOP, fill="x")
@@ -159,23 +175,20 @@ class File_Frame():
             if dirname is '':
                 return
             #if(dirname)
-            self.gui_mngr.dm.data_hdlr['data_dir'] = dirname
-            print("self.gui_mngr.dm.data_hdlr['data_dir'] = ", self.gui_mngr.dm.data_hdlr['data_dir'])
-            self.gui_mngr.dm.read_dir()
+            self.am.dm.data_hdlr['data_dir'] = dirname
+            print("self.am.dm.data_hdlr['data_dir'] = ", self.am.dm.data_hdlr['data_dir'])
+            self.am.dm.read_dir()
          
-            self.gui_mngr.print("Data directory selected: " + dirname )
+            self.am.print("Data directory selected: " + dirname )
 
 
             self.f.refresh_options()
-            
-      
-            
-
+        
         button = Button(self.self_frame, text = "Select a data directory ...", command = browseFiles)
         button.pack(pady=5)
 
 
 
     def _init_DDMenu(self):
-        self.f = DDMenu(self.top, self.gui_mngr, "File")
-        self.p = DDMenu(self.top, self.gui_mngr, "Power (dBm)")
+        self.f = DDMenu(self.top, self.am, "File")
+        self.p = DDMenu(self.top, self.am, "Power (dBm)")

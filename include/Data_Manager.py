@@ -1,4 +1,5 @@
 import h5py
+from idna import check_bidi
 import numpy as np
 from matplotlib import pyplot as plt
 from scipy.optimize import curve_fit
@@ -117,17 +118,16 @@ class Data_Struct:
               }
         
 
-
         for (k,v) in self.para['p'].items(): # init percentage std for each para to 0.
             self.para['%_std'][k] = 0
 
 
-        
-
+import copy
+init_para = copy.deepcopy(para)
 class Data_Manager():
     def __init__(self,gui_mngr):
-        self.para = para
-        self.data_hdlr = data_hdlr
+        self.para = copy.deepcopy(para)
+        self.data_hdlr = copy.deepcopy(data_hdlr)
         self.ds = {}
         self.gui_mngr = gui_mngr
 
@@ -135,9 +135,20 @@ class Data_Manager():
     def save_para(self):
         self.save_Q()
 
+    def check_dict(self, name, dict):
+        return sum([x==name for x in dict.keys()])
+
+    def get(self, name):
+        
+        if(self.check_dict(name, self.para)):
+            return self.para[name]
+        elif self.check_dict(name, self.para['p']):
+            return self.para['p'][name] 
+            
+
+        
 
     def save_Q(self):
-        #print("self.data_hdlr['file_name'] = ", self.data_hdlr['file_name'] )
         log_file = self.data_hdlr['log_dir_today'] +'/'+ \
                      '[' +  str(datetime.now())[11:19].replace(':','_').replace(' ','_') + '] '+\
                                         self.data_hdlr['file_name'].split('data')[1][1:-5] + '.json' 
@@ -147,12 +158,9 @@ class Data_Manager():
 
     def read_dir(self):
         print("read_dir\n")
-        #print("self.data_hdlr['data_dir']: ", self.data_hdlr['data_dir'], "\n")
         
         file_names = [join(self.data_hdlr['data_dir'], f) for f in listdir(self.data_hdlr['data_dir']) if isfile(join(self.data_hdlr['data_dir'], f))]
         self.data_hdlr['file_names'] = file_names
-
-        
         print("file_names: ",file_names,"\n")
         
         log_dir = (self.data_hdlr['data_dir'] + "/../log/" + (str(datetime.now())[:10].replace(':','-').replace(' ','_')))
@@ -164,29 +172,13 @@ class Data_Manager():
 
 
     def read_session(self, session_info):
-        '''self.data_hdlr['file_name'] = session_info['file_name']
-        self.data_hdlr['data_dir'] = session_info['data_dir']
-        self.read_file()
-
-        for (power, ds) in self.ds.items():
-            ds.para = session_info[power]
-        self.gui_mngr.file_frame.f.refresh_options()
-        self.gui_mngr.file_frame.p.refresh_options()'''
-        
         self.gui_mngr.file_frame.f.cmd(session_info['file_name'].replace(session_info['data_dir'], ""))
         self.data_hdlr['file_name'] = session_info['file_name']
         self.data_hdlr['data_dir'] = session_info['data_dir']
         self.read_dir()
-        #self.read_file()
 
         for (power, ds) in self.ds.items():
             ds.para = session_info[power]
-        #self.gui_mngr.file_frame.f.refresh_options()
-        #self.gui_mngr.file_frame.p.refresh_options()
-        
-
-        
-
 
 
     def read_file(self):
@@ -198,45 +190,31 @@ class Data_Manager():
         VNA_name = file['Instruments'][0][4].decode('UTF-8')
         self.data_hdlr['VNA_name'] = VNA_name
 
-     
-        #self._init_para()
         self._init_powers()
-        #self._init_Q()
         self._init_Data_Struct()
     
     def _init_Data_Struct(self):
         for power in self.data_hdlr['powers']:
             self.ds[(power + 'dBm')] = Data_Struct()
-
-    '''def _init_Q(self):
-        #print("self.data_hdlr['powers'] = ", self.data_hdlr['powers'])
-        for (Q_name, Q_dict) in self.para['Q'].items():   # Init Q all to 0.
-            for power in self.data_hdlr['powers']:
-                Q_dict[(power + 'dBm')] = 0'''
-        
-        #for power in self.data_hdlr['powers']:
             
-
-
 
     def read_power(self):
         power_to_select = self.data_hdlr['powers'][self.data_hdlr['data_power']]
         power_to_select  = str(float(power_to_select) ) + "dBm"
         self.switch_data_struct(power_to_select)
-
-
         print("read_power\n")
 
         file = self.data_hdlr['file']
         VNA_name = self.data_hdlr['VNA_name']
 
+        
         f1 = self.data_hdlr['file']['/Step config/' + VNA_name + ' - Start frequency/Step items'][0][2]
         f2 = self.data_hdlr['file']['/Step config/' + VNA_name + ' - Stop frequency/Step items'][0][2]
-        f = np.linspace(f1, f2, file['/Traces/' + VNA_name + ' - S21'].shape[0])
+        f = np.linspace(f1, f2, file['/Traces/' + VNA_name + ' - S21'].shape[0])[int(self.para["DISCARD_LEFT"]):][:int(-self.para["DISCARD_RIGHT"])] 
         self.data_hdlr['f'] = f
 
-        R = file['/Traces/' + VNA_name + ' - S21'][:,1, self.data_hdlr['data_power']] # read data
-        I = -file['/Traces/' + VNA_name + ' - S21'][:,0, self.data_hdlr['data_power']]
+        R = file['/Traces/' + VNA_name + ' - S21'][:,1, self.data_hdlr['data_power']][int(self.para["DISCARD_LEFT"]):][:int(-self.para["DISCARD_RIGHT"])] 
+        I = -file['/Traces/' + VNA_name + ' - S21'][:,0, self.data_hdlr['data_power']][int(self.para["DISCARD_LEFT"]):][:int(-self.para["DISCARD_RIGHT"])] 
         self.data_hdlr['R'] = R
         self.data_hdlr['I'] = I
 
@@ -244,33 +222,22 @@ class Data_Manager():
         self.gui_mngr.panel_pm.refresh()
 
 
-
-    
-
-
     def switch_data_struct(self, power_selected):
-
         print("[switch_data_struct] power_selected = ", power_selected)
         print("self.ds.keys()", self.ds.keys())
         self.para = self.ds[power_selected].para
 
 
     def _init_powers(self):
-        
         self.data_hdlr['powers'] = [str(p[0][0]) for p in self.data_hdlr['file']['/Data/Data'][:]]
 
 
 
-
     def _init_para(self):
-
         # Auto-locate f0
         self.para['p']['f0'] = self.data_hdlr['f'][self.data_hdlr['R'].argmin()]
 
-        '''for (k,v) in self.para['p'].items(): # init percentage std for each para to 0.
-            self.para['%_std'][k] = 0'''
 
-   
 
     def Data_Preprocessing(self):
         R = self.data_hdlr['R']
@@ -291,8 +258,6 @@ class Data_Manager():
 
         mag = np.sqrt(R**2 + I**2) # Transform to (mag, arg)
         arg = np.angle(R + 1j*I)
-
-        #mag, arg, f = Denoize(arg, mag, f)
          
         S21 = mag * np.exp( 1j * arg ) # Transform back to (Re, Im)
         R = np.real(S21)
@@ -300,6 +265,8 @@ class Data_Manager():
 
         self.data_hdlr['R'], self.data_hdlr['I'], self.data_hdlr['f'] = R, I, f
         
+
+
 
     def Fit(self, op=""):
         
@@ -335,7 +302,8 @@ class Data_Manager():
 
 
 
-
+#model = {}
+#model["Rt"] = 
 
 
 def Rt(f, Qe, Qi, f0, tau, a, alpha, Ic, Rc):
