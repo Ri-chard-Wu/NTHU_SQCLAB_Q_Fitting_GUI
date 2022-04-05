@@ -29,7 +29,7 @@ class Fit_Button:
         self.name = name
         self.panel_mngr = panel_mngr
         button = tk.Button(master, width = 23, height = 2, text = name, command=self.cmd)
-        button.pack(side = RIGHT, fill = 'x')
+        button.pack(side = RIGHT,expand=True, fill = 'both')
 
     def cmd(self):
         self.panel_mngr.am.dm.Fit(self.name)
@@ -50,18 +50,19 @@ class Fit_Frame:
         self.master = master
         
         self.top = tk.Frame(master)
-        self.top.pack(side = TOP)
+        self.top.pack(fill="both",expand=True,side = TOP)
         self.bottom = tk.Frame(master)
-        self.bottom.pack(side = BOTTOM)
+        self.bottom.pack(side = BOTTOM,expand=True, fill="both")
 
         self._init_Fit_Button(self.bottom)
         self._init_info_box(self.top)
 
     def _init_Fit_Button(self, master):
-            top = tk.Frame(master, relief=tk.RAISED, borderwidth=2)
-            top.pack(side = TOP, fill = 'x')
             bottom = tk.Frame(master, relief=tk.RAISED, borderwidth=2)
-            bottom.pack(side = BOTTOM, fill = 'x')
+            bottom.pack(side = BOTTOM,expand=True,fill = 'both')
+            top = tk.Frame(master, relief=tk.RAISED, borderwidth=2)
+            top.pack(side = BOTTOM,expand=True, fill = 'both')
+
 
             
             self.btns = {}
@@ -72,23 +73,23 @@ class Fit_Frame:
 
     def _init_info_box(self, master):
         
-        self.Fit_Result_Box = ttk.Treeview(master, height=len(self.am.dm.para['p']))
-        self.Fit_Result_Box.pack()
+        self.Fit_Result_Box = ttk.Treeview(master) #, height=len(self.am.dm.para['p'])
+        self.Fit_Result_Box.pack(expand=True, fill="both", padx=5, pady=5)
 
         style = ttk.Style()
-        style.configure("Treeview.Heading", font=(None, 13))
-        style.configure("Treeview", font=(None, 13))
-        style.configure('Treeview', rowheight=25)
+        style.configure("Treeview.Heading", font=(None, 12))
+        style.configure("Treeview", font=(None, 12))
+        style.configure('Treeview', rowheight=23)
 
         self.Fit_Result_Box['columns'] = ('Parameter', 'Fit_Value', '%_std')
 
         self.Fit_Result_Box.column("#0", width=0,  stretch=NO)
         self.Fit_Result_Box.heading("#0",text="",anchor=CENTER)
         for c in self.Fit_Result_Box['columns']:
-            self.Fit_Result_Box.column(c,anchor=CENTER, width=110)
+            self.Fit_Result_Box.column(c,anchor=CENTER, width=105)
             self.Fit_Result_Box.heading(c,text=c,anchor=CENTER)
         
-        self._add_right_click_popup(self.Fit_Result_Box)
+        #self._add_right_click_popup(self.Fit_Result_Box)
 
     def _add_right_click_popup(self, master):
         #def do_popup(event):  

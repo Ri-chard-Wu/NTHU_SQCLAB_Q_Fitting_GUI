@@ -135,9 +135,8 @@ class Panel_Manager:
         self.master = master
         
         self.top = tk.Frame(master)
-        self.top.pack(side = TOP)
-        self.bottom = tk.Frame(master)
-        self.bottom.pack(side = BOTTOM)
+        self.top.pack(expand = True,fill='both',side = TOP)
+
 
        
         self.panels = {}
@@ -158,15 +157,15 @@ class Panel_Manager:
 
     def _init_scroll_bar(self):
 
-        self.frame = tk.Frame(self.top)
-        self.frame.pack()
+        
+    
         
         #print("\nself.topFrame.winfo_width():",self.am.topFrame.winfo_width(),"\n")
 
-        self.canvas = tk.Canvas(self.frame, height = 600, width=330)
+        self.canvas = tk.Canvas(self.top, height = 600, width=330)
         self.canvas.pack(side="left", fill="y", expand=True)
 
-        self.scrollbar = ttk.Scrollbar(self.frame, orient="vertical", command=self.canvas.yview)
+        self.scrollbar = ttk.Scrollbar(self.top, orient="vertical", command=self.canvas.yview)
         self.scrollbar.pack(side="right", fill="y")
 
         self.scrollable_frame = ttk.Frame(self.canvas, fill=None)
