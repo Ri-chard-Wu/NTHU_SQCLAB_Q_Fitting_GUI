@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import *
 from tkinter import filedialog
+from matplotlib.cbook import delete_masked_points
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -38,21 +39,37 @@ class Session_Manager:
 
     
     def get_active(self):
-        return self.tab_ctrl.tab(self.tab_ctrl.select(), "text").replace(' ','')
+        tab_name = self.tab_ctrl.tab(self.tab_ctrl.select(), "text")
+        name = tab_name[3:-3] # remove the space I introduced 
+        return name
 
     def _init_popup(self):
         self.m = Menu(self.master, tearoff = 0)
         #self.m.add_command(label ="Create New Session", command=self.add_session)
         self.m.add_command(label ="Rename", command=self.rename)
+        self.m.add_command(label ="Delete", command=self.delete_session)
         self.tab_ctrl.bind("<Button-3>", self.do_popup)
         
     def do_popup(self, event):
-        print("=---active:", self.get_active())
+        #print("=---active:", self.get_active())
         try:
             self.m.tk_popup(event.x_root, event.y_root)
         finally:
             self.m.grab_release()
     
+    def delete_session(self):
+        to_delete = self.get_active()
+        self.tab_ctrl.forget(self.tab_ctrl.select())
+        #print("\n\n[before]self.sessions.keys()=",self.sessions.keys())
+        #print("self.app.keys()=",self.app.keys())
+
+        
+        if(self.sessions.get(to_delete)): self.sessions.pop(to_delete)
+        if(self.app.get(to_delete)): self.app.pop(to_delete)
+        
+        #print("\n\n[after]self.sessions.keys()=",self.sessions.keys())
+        #print("self.app.keys()=",self.app.keys())
+
     def add_session(self, name=""):
         self.n += 1
 
@@ -60,7 +77,7 @@ class Session_Manager:
             name = self._get_Untitled_name()
 
         tab_frame = tk.Frame(self.tab_ctrl, relief=tk.RAISED,borderwidth=5,fill=None)
-        self.tab_ctrl.add(tab_frame, text = ('  ' + name + '  ') )
+        self.tab_ctrl.add(tab_frame, text = ('   ' + name + '   ') )
         self.tab_ctrl.pack(fill='x')
         self.sessions[name] = tab_frame
         self.active = name
@@ -88,11 +105,22 @@ class Session_Manager:
             #print(self.le.entry.get())
             old = self.get_active()
             new = self.le.entry.get()
+            print("---old=",old)
             
-            self.tab_ctrl.tab (self.sessions[self.get_active()], text = "   "+self.le.entry.get()+"   ")
+            self.tab_ctrl.tab (self.sessions[old], text = "   " + new + "   ")
 
-            self.sessions[new] = self.sessions[old]
-            self.sessions.pop(old)
+            #print("[rename]self.sessions.keys() = ", self.sessions.keys())
+            #print("[rename]self.app.keys() = ",self.app.keys() )
+            #print("[rename]old = ",old)
+        
+        
+
+            if(self.sessions.get(old)):
+                self.sessions[new] = self.sessions[old]
+                self.sessions.pop(old)
+            if(self.app.get(old)):
+                self.app[new] = self.app[old]
+                self.app.pop(old)
             
             
             self.popup.destroy()

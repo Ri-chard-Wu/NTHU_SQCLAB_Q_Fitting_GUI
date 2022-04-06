@@ -15,7 +15,7 @@ import json
 
 
 data_hdlr = {'data_sel': 3,
-        'data_dir': r'..\data',
+        'data_dir': '',
         'data_power': -1,
         'file_names': "",
         'file_name':"",
@@ -125,11 +125,11 @@ class Data_Struct:
 import copy
 init_para = copy.deepcopy(para)
 class Data_Manager():
-    def __init__(self,gui_mngr):
+    def __init__(self,am):
         self.para = copy.deepcopy(para)
         self.data_hdlr = copy.deepcopy(data_hdlr)
         self.ds = {}
-        self.gui_mngr = gui_mngr
+        self.am = am
 
 
     def save_para(self):
@@ -172,9 +172,11 @@ class Data_Manager():
 
 
     def read_session(self, session_info):
-        self.gui_mngr.file_frame.f.cmd(session_info['file_name'].replace(session_info['data_dir'], ""))
         self.data_hdlr['file_name'] = session_info['file_name']
         self.data_hdlr['data_dir'] = session_info['data_dir']
+        self.am.file_frame.f.cmd(session_info['file_name'].replace(session_info['data_dir'], ""))
+        print("--- self.data_hdlr['file_name'] = ",self.data_hdlr['file_name'])
+        print("-- self.data_hdlr['data_dir'] = ",self.data_hdlr['data_dir'])
         self.read_dir()
 
         for (power, ds) in self.ds.items():
@@ -219,7 +221,7 @@ class Data_Manager():
         self.data_hdlr['I'] = I
 
         self._init_para()
-        self.gui_mngr.panel_pm.refresh()
+        self.am.panel_pm.refresh()
 
 
     def switch_data_struct(self, power_selected):

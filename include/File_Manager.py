@@ -73,6 +73,8 @@ class DDMenu():
         if (self.name == "File"):
             v = self.am.dm.data_hdlr['data_dir'] + v
             self.am.dm.data_hdlr["file_name"] = v
+            print("[update_data_hldr] self.am.dm.data_hdlr['data_dir'] = ",self.am.dm.data_hdlr['data_dir'])
+            print("[update_data_hldr] self.am.dm.data_hdlr[\"file_name\"] =",self.am.dm.data_hdlr["file_name"])
             self.am.dm.read_file()
 
             self.am.file_frame.p.refresh_options()

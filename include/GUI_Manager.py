@@ -57,6 +57,7 @@ class GUI_Manager:
         
 
     def check_accessibility(self,event):
+        #print("---- check_accessibilit")
         
         if(self.sm.n):
             self.option.entryconfigure('Default application', state=tk.NORMAL)
@@ -64,15 +65,20 @@ class GUI_Manager:
         else:
             self.option.entryconfigure('Default application', state=tk.DISABLED)
             self.option.entryconfigure('Plot Q vs Power application', state=tk.DISABLED)
-
+        #print("--- self.sm.app.keys() =", self.sm.app.keys() )
+        #print("--- self.sm.get_active() = ", self.sm.get_active())
         if(self.sm.app.get(self.sm.get_active())): # check whether name exist at all.
-            
+            #print("----name exist")
             self.option.entryconfigure('Default application', state=tk.DISABLED)
             self.option.entryconfigure('Plot Q vs Power application', state=tk.DISABLED)
 
             if(self.sm.app[self.sm.get_active()].app_name == "default"):
+                #print("--self.sm.app[self.sm.get_active()].dm.data_hdlr['data_dir']=",self.sm.app[self.sm.get_active()].dm.data_hdlr['data_dir'])
+                
                 self.filemenu.entryconfigure('Load session data', state=tk.NORMAL)
                 self.filemenu.entryconfigure('Save session data', state=tk.NORMAL)
+                if(self.sm.app[self.sm.get_active()].dm.data_hdlr['data_dir'] != ""):
+                    self.filemenu.entryconfigure('Load session data', state=tk.DISABLED)
             else:
                 self.filemenu.entryconfigure('Load session data', state=tk.DISABLED)
                 self.filemenu.entryconfigure('Save session data', state=tk.DISABLED)
