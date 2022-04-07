@@ -47,6 +47,7 @@ class Session_Manager:
         self.m = Menu(self.master, tearoff = 0)
         #self.m.add_command(label ="Create New Session", command=self.add_session)
         self.m.add_command(label ="Rename", command=self.rename)
+        self.m.add_separator()
         self.m.add_command(label ="Delete", command=self.delete_session)
         self.tab_ctrl.bind("<Button-3>", self.do_popup)
         

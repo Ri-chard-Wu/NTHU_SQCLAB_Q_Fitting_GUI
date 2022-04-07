@@ -133,7 +133,8 @@ class Data_Manager():
 
 
     def save_para(self):
-        self.save_Q()
+        if(0):
+            self.save_Q()
 
     def check_dict(self, name, dict):
         return sum([x==name for x in dict.keys()])
@@ -304,10 +305,6 @@ class Data_Manager():
 
 
 
-#model = {}
-#model["Rt"] = 
-
-
 def Rt(f, Qe, Qi, f0, tau, a, alpha, Ic, Rc):
     x = (f - f0)/f0
     N = ( Qe + 1j * Qe * Qi * 2*x ) * a * np.exp(1j*(2*np.pi*alpha + tau*f*10**(-9)))
@@ -320,14 +317,11 @@ def It(f, Qe, Qi, f0, tau, a, alpha, Ic, Rc):
     D = Qi + Qe + 1j*2*Qe*Qi*x
     return np.imag(N/D) + Ic
 
-
 def arg_t(f, Qe, Qi, f0, tau, a, alpha, Ic, Rc):
     R = Rt(f, Qe, Qi, f0, tau, a, alpha, Ic, Rc)
     I = It(f, Qe, Qi, f0, tau, a, alpha, Ic, Rc)
     arg = np.angle(R + 1j*I)
     return arg
-
-
 
 def mag_t(f, Qe, Qi, f0, tau, a, alpha, Ic, Rc):
     R = Rt(f, Qe, Qi, f0, tau, a, alpha, Ic, Rc)
