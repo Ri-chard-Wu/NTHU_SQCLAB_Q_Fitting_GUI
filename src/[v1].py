@@ -1,7 +1,8 @@
 import sys
-sys.path.append(r'../include/')
-#sys.path.append(r'C:/Users/Richard/Desktop/QC lab/Projects/[v4] Resonator project/include')
-from Data_Manager import *
+#sys.path.append(r'../include/')
+sys.path.append(r'C:\Users\Richard\Desktop\QC lab\Projects\[v4]_Resonator_project\include')
+
+
 from GUI_Manager import *
 #---------------------------------| GUI Parameters >
 
