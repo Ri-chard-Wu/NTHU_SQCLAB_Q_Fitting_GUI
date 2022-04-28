@@ -71,6 +71,8 @@ class Fit_Frame:
             self.btns["Fit_Im"] =  Fit_Button(bottom, self, "Fit_Im")
             self.btns["Fit_Re"] =  Fit_Button(bottom, self, "Fit_Re")
 
+        
+
     def _init_info_box(self, master):
         
         self.Fit_Result_Box = ttk.Treeview(master) #, height=len(self.am.dm.para['p'])

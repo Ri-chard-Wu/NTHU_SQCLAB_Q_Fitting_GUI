@@ -25,6 +25,12 @@ data_hdlr = {'data_sel': 3,
         'I':0,
         'f':0,
         'powers':0,
+        'bg_file_name':'',
+        'bg_file':'',
+        'bg':{
+            'R':0,
+            'I':0
+        }
  
         
         }
@@ -33,11 +39,11 @@ data_hdlr = {'data_sel': 3,
 
 
 para = {     
-        'p':{'Qe':10*10**4,
-             'Qi': 35*10**4,
-             'f0': 0, #6.59177*10**9,
+        'p':{'Qe': 557.442,
+             'Qi': 1437.460,
+             'f0': 4832501100, #6.59177*10**9,
              #'df': 6.59177*10**9,
-             'tau': -105,
+             'tau': 1.084,
              'a': 0.0041,
              'alpha': -100.98,
              'Ic': 0.0004,
@@ -45,30 +51,30 @@ para = {
         
         '%_std':{},
         
-        'LB':{'Qe':5*10**4,
-              'Qi':20*10**4,
-              'f0':0,
+        'LB':{'Qe':600,
+              'Qi':500,
+              'f0':4733500000,
               #'df':10**8,
-              'tau':-200,
+              'tau':-1,
               'a':-10,
               'alpha':-120,
               'Ic':-10,
               'Rc':-10},
         
-        'UB':{'Qe':30*10**4,
-              'Qi':70*10**4,
-              'f0':10**11,
+        'UB':{'Qe':1200,
+              'Qi':2000,
+              'f0':4838500000,
               #'df':10**10,
-              'tau':200,
+              'tau':2,
               'a':10,
               'alpha':100,
               'Ic':10,
               'Rc':10},
-        'DISCARD_LEFT': 600,
-        'DISCARD_RIGHT': 600,
-            'Q':{'Qi':{},
-             'Qe':{},
-             'Qtot':{}},
+        'DISCARD_LEFT': 200,
+        'DISCARD_RIGHT': 200,
+            'Q':{'Qi':0,
+             'Qe':0,
+             'Qtot':0},
               }
         
 
@@ -78,7 +84,9 @@ para = {
 
 class Data_Struct:
     def __init__(self):
-        self.para = {     
+        self.para = copy.deepcopy(para)
+
+        '''self.para = {     
         'p':{'Qe':10*10**4,
              'Qi': 35*10**4,
              'f0': 0, #6.59177*10**9,
@@ -115,7 +123,7 @@ class Data_Struct:
             'Q':{'Qi':0,
              'Qe':0,
              'Qtot':0},
-              }
+              }'''
         
 
         for (k,v) in self.para['p'].items(): # init percentage std for each para to 0.
@@ -145,8 +153,60 @@ class Data_Manager():
             return self.para[name]
         elif self.check_dict(name, self.para['p']):
             return self.para['p'][name] 
-            
 
+    def denorm_by_bg(self):
+        print("[dm.denorm_by_bg] perfrom bg denorm ")
+        def convert(R, I):
+            return np.sqrt(R**2 + I**2), np.angle(R + 1j*I)
+        def reverse(mag, arg):
+            S21 = mag * np.exp( 1j * arg )      
+            return np.real(S21), np.imag(S21)
+            
+        mag_raw, arg_raw = convert(self.data_hdlr['R'], self.data_hdlr['I'])
+        mag_bg, arg_bg = convert(self.data_hdlr['bg']['R'], self.data_hdlr['bg']['I'])
+       
+        mag = mag_raw * mag_bg 
+        arg = arg_raw + arg_bg
+        R, I = reverse(mag, arg)
+
+        self.data_hdlr['R'] = R
+        self.data_hdlr['I'] = I
+
+    def norm_by_bg(self):
+        # assume raw data and bg data all have been read
+
+        def convert(R, I):
+            return np.sqrt(R**2 + I**2), np.angle(R + 1j*I)
+        def reverse(mag, arg):
+            S21 = mag * np.exp( 1j * arg )      
+            return np.real(S21), np.imag(S21)
+            
+        print("[dm.norm_by_bg] Before bg norm: R.shape = ", self.data_hdlr['R'].shape)
+
+        mag_raw, arg_raw = convert(self.data_hdlr['R'], self.data_hdlr['I'])
+        mag_bg, arg_bg = convert(self.data_hdlr['bg']['R'], self.data_hdlr['bg']['I'])
+        print("[dm.norm_by_bg] mag_raw.shape = ", mag_raw.shape)
+        print("[dm.norm_by_bg] arg_bg.shape = ", arg_bg.shape)
+        mag = mag_raw / mag_bg 
+        arg = arg_raw - arg_bg
+        R, I = reverse(mag, arg)
+
+        print("[dm.norm_by_bg] After bg norm: R.shape = ", R.shape)
+        self.data_hdlr['R'] = R
+        self.data_hdlr['I'] = I
+
+    def read_bg(self):
+        if(self.data_hdlr['bg_file_name'] != ''):
+
+            file = h5py.File(self.data_hdlr['bg_file_name'],'r')
+            self.data_hdlr['bg_file'] = file
+            
+            R = file['/Traces/' + self.data_hdlr['VNA_name'] + ' - S21'][:,1, 0][int(self.para["DISCARD_LEFT"]):][:int(-self.para["DISCARD_RIGHT"])] 
+            I = -file['/Traces/' + self.data_hdlr['VNA_name'] + ' - S21'][:,0, 0][int(self.para["DISCARD_LEFT"]):][:int(-self.para["DISCARD_RIGHT"])] 
+            self.data_hdlr['bg']['R'] = R
+            self.data_hdlr['bg']['I'] = I
+            print("[dm.read_bg()] bg R shape = ", R.shape)
+         
         
 
     def save_Q(self):
@@ -190,11 +250,19 @@ class Data_Manager():
         file = h5py.File(self.data_hdlr['file_name'],'r')
         self.data_hdlr['file'] = file
         
-        VNA_name = file['Instruments'][0][4].decode('UTF-8')
+        #print("[read_file()] file['Instruments'][0][4] = ", file['Instruments'][0][4])
+
+        if(type(file['Instruments'][0][4]) == type(b'')):
+            VNA_name = file['Instruments'][0][4].decode('UTF-8')
+        elif(type(file['Instruments'][0][4]) == type('')):
+            VNA_name = file['Instruments'][0][4]
+        
         self.data_hdlr['VNA_name'] = VNA_name
 
         self._init_powers()
         self._init_Data_Struct()
+
+        self.am.publish("done read file")
     
     def _init_Data_Struct(self):
         for power in self.data_hdlr['powers']:
@@ -220,14 +288,18 @@ class Data_Manager():
         I = -file['/Traces/' + VNA_name + ' - S21'][:,0, self.data_hdlr['data_power']][int(self.para["DISCARD_LEFT"]):][:int(-self.para["DISCARD_RIGHT"])] 
         self.data_hdlr['R'] = R
         self.data_hdlr['I'] = I
+        print("[dm.read_power()] R.shape = ", R.shape)
 
         self._init_para()
         self.am.panel_pm.refresh()
+        self.am.publish("done read power")
 
 
     def switch_data_struct(self, power_selected):
         print("[switch_data_struct] power_selected = ", power_selected)
+        print("[switch_data_struct] Before switching,  self.para['p']['f0']= ", self.para['p']['f0'])
         print("self.ds.keys()", self.ds.keys())
+        
         self.para = self.ds[power_selected].para
 
 
@@ -238,7 +310,8 @@ class Data_Manager():
 
     def _init_para(self):
         # Auto-locate f0
-        self.para['p']['f0'] = self.data_hdlr['f'][self.data_hdlr['R'].argmin()]
+        #self.para['p']['f0'] = self.data_hdlr['f'][self.data_hdlr['R'].argmin()]
+        print()
 
 
 
@@ -272,15 +345,30 @@ class Data_Manager():
 
 
     def Fit(self, op=""):
-        
+        def check_bounds(p, LB, UB):
+            for name, v in p.items():
+                if(p[name] < LB[name]):
+                    p[name] = LB[name]
+                    self.am.print("[Warning] para value < LB detected for the parameter: "+ name + ". Automatically set para value = LB")
+                elif(p[name] > UB[name]):
+                    p[name] = UB[name]
+                    self.am.print("[Warning] para value > UB detected for the parameter: " + name + ". Automatically set para value = UB")
+            return p, LB, UB
+
         R, I, f = self.data_hdlr['R'], self.data_hdlr['I'], self.data_hdlr['f']
 
         para = self.para
+        para['p'], para['LB'], para['UB'] = check_bounds(copy.deepcopy(para['p']), 
+                                                         copy.deepcopy(para['LB']), 
+                                                         copy.deepcopy(para['UB']) )
+
+        
         p = [v for (k, v) in para['p'].items()]
 
         upper_bounds = [v for (k, v) in para['UB'].items()]
         lower_bounds = [v for (k, v) in para['LB'].items()]
         bounds=(lower_bounds, upper_bounds)
+        
 
         cov = []
         if(op=="Fit_Re"): p, cov = curve_fit(Rt, f, R, p, bounds=bounds)
@@ -302,8 +390,6 @@ class Data_Manager():
 
 
     
-
-
 
 def Rt(f, Qe, Qi, f0, tau, a, alpha, Ic, Rc):
     x = (f - f0)/f0
@@ -328,3 +414,25 @@ def mag_t(f, Qe, Qi, f0, tau, a, alpha, Ic, Rc):
     I = It(f, Qe, Qi, f0, tau, a, alpha, Ic, Rc)
     mag = np.absolute(R + 1j*I)
     return mag
+
+
+
+
+class Data_Preprocessing:
+    def _init__(self,am):
+        self.am = am
+
+
+    def Denoize(self, arg, mag, f):
+        sel = abs(arg) < 4 # Denoise
+        return mag[sel], arg[sel], f[sel]
+
+    def Bg_Normalization(self, mag_raw, arg_raw, mag_bg, arg_bg, f):  
+        mag = mag_raw / mag_bg 
+        arg = arg_raw - arg_bg
+        return mag, arg, f
+
+
+
+
+    

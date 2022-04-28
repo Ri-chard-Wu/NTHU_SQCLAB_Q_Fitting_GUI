@@ -34,20 +34,31 @@ class Default_Application_Manager:
         #self.gui_mngr = gui_mngr
 
         self.dm = Data_Manager(self)
+        self.subscriber = {}
         self._init_default_application()
-     
+        
+    
+    def publish(self, msg):
+        for name, obj in self.subscriber.items():
+            obj.msg_available(msg)
+
+    def subscribe(self, name, object):
+        self.subscriber[name] = object 
 
     def tab_wrap(self, master, name):
         tab_ctrl = ttk.Notebook(master)
-        tab_frame = tk.Frame(tab_ctrl, relief=tk.RAISED,borderwidth=5,fill=None)
+        tab_ctrl, tab_frame = self.add_tab(tab_ctrl, name)
+
+        '''tab_frame = tk.Frame(tab_ctrl, relief=tk.RAISED,borderwidth=5,fill=None)
         tab_ctrl.add(tab_frame, text = ('  ' + name + '  ') )
         #tab_ctrl.pack(side=RIGHT)
-        tab_ctrl.pack(expand = True,fill='both')
+        tab_ctrl.pack(expand = True,fill='both')'''
+
         return tab_ctrl, tab_frame
     
     def add_tab(self, tab_ctrl, name):
         
-        tab_frame = tk.Frame(tab_ctrl, relief=tk.RAISED,borderwidth=5,fill=None)
+        tab_frame = tk.Frame(tab_ctrl, relief=tk.RAISED,borderwidth=1,fill=None)
         tab_ctrl.add(tab_frame, text = ('  ' + name + '  ') )
         tab_ctrl.pack(expand = True,fill='both')
         return tab_ctrl, tab_frame
@@ -70,8 +81,12 @@ class Default_Application_Manager:
         self.message_box.pack(expand = True, fill='both',)
 
     def _init_BasicInfo_frame(self, master):
-        self.tab_file_frame, tab = self.tab_wrap(master, 'File')
-        self.file_frame = get_File_Frame(tab, self)
+        tab_ctrl, tab = self.tab_wrap(master, 'File')
+        tab_ctrl, Raw_frame = self.tab_wrap(tab, 'Raw')
+        _, Bg_frame = self.add_tab(tab_ctrl, "Bg")
+        
+        self.file_frame = get_File_Frame(Raw_frame, self)
+        self.bg_mngr = Bg_File_Manager(Bg_frame, self)
         
     def _init_Fit_Frame(self, master):#master already fully expanded, but the tab still cannot
         self.tab_fit_frame, tab = self.tab_wrap(master, 'Fit')
@@ -351,6 +366,8 @@ class Default_Application_Manager:
         
         self.ax3[0].set_ylabel('Qi')
         self.ax3[0].set_xlabel('Power (dBm)')
+        print("[plot_Q()] powers = ", powers)
+        print("[plot_Q()] Q['Qi'] = ", Q['Qi'])
         self.ax3[0].plot(powers, Q['Qi'], marker=cut_star)
 
         self.ax3[1].set_ylabel('Qe')

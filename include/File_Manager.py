@@ -46,7 +46,8 @@ class DDMenu():
         self.menu.pack(side=RIGHT)
 
     def cmd(self, v):
-        print("v = ", v , "\n")
+        #print("[DDMenu.cmd] update the dropdown menu face\n")
+        print("v = ", v , "type(v) = ", type(v),"\n")
         self.update_data_hldr(v)
 
         self.face.set( v[:self.DISPLAY_LENGTH] + (" ..." if len(v) > self.DISPLAY_LENGTH else ""))
@@ -98,6 +99,144 @@ def get_File_Frame(tab, am):
         return File_Frame_Default(tab,am)
     if (am.app_name == "plot_Q_vs_power"):
         return File_Frame_Plot_Q_vs_Power(tab,am)
+
+
+
+
+
+
+
+class Label_CheckBox_Pair:
+    def __init__(self, master, am, name):
+        self.master = master
+        self.am = am
+        
+        self.frame = tk.Frame(self.master)
+        self.frame.pack(side=TOP, fill = "x")
+
+        self.value = tk.BooleanVar() 
+        self.value.set(False)
+         
+        self.chk = tk.Checkbutton(self.frame, text='', var=self.value, command = self.cmd) 
+        self.chk.pack(side = RIGHT)
+
+        self.name = tk.Label(self.frame, text=name, pady=5)
+        self.name.pack(side = LEFT)
+
+    def cmd(self):
+        
+        if(self.am.app_name == "default"):
+            print("[Label_CheckBox_Pair.cmd()] value = ",self.value.get())
+
+            if(self.value.get()):
+                self.am.bg_mngr.file_sel_btn["state"] = NORMAL
+            else:
+                self.am.bg_mngr.file_sel_btn["state"] = DISABLED
+                if(self.am.dm.data_hdlr['bg_file_name'] != ''):
+                    self.am.dm.denorm_by_bg()
+                    self.am.plot()
+                    self.am.dm.data_hdlr['bg_file_name'] = ''
+                    self.am.bg_mngr.file_sel_btn['text'] = "Select a bg file ..."
+                    #print("[cmd] After bg denorm,")
+                    
+
+
+
+class Bg_File_Manager():
+    '''
+    - when first time checked, enable file selector button 
+    - when data selected, read bg, perform bg norm, and replot the data for the current power
+    - when switching to other data power, msg published by dm.read_file() will triger
+      bg norm to automatically perform bg norm
+    - when unckecked, first check whether bg data has been read. If read, denorm the 
+      current data power, and disable file selector button, and set dm.data_hdlr['bg
+      _file_name'] = ''
+
+    '''
+    def __init__(self, master, am):
+        self.am = am
+        self.bg_readed = False
+
+        self.top = tk.Frame(master,relief=tk.RAISED,borderwidth=1,fill=None)
+        self.top.pack(side=TOP, fill = "x")
+        self.mid = tk.Frame(master,relief=tk.RAISED,borderwidth=1,fill=None)
+        self.mid.pack(side=TOP, fill = "x")
+        self.bottom = tk.Frame(master,relief=tk.RAISED,borderwidth=1,fill=None)
+        self.bottom.pack(side=TOP, fill = "x")
+        
+        self._init_checkbox(self.top)
+        self._init_file_selector(self.mid)
+        #self._init_file_display(self.bottom)
+        self._init_subscribe()
+
+    def _init_subscribe(self):
+        self.am.subscribe("bg_mngr", self)
+
+    def msg_available(self, msg):
+        #print("msg == \"done read file\" = ",(msg == "done read file"))
+        if(msg == "done read power"):
+            self.lcp.chk['state'] = NORMAL
+            #print("self.lcp.value.get() = ",self.lcp.value.get())
+            #print("self.bg_readed = ",self.bg_readed)
+            if(self.lcp.value.get()):
+                if(self.bg_readed):
+                    print("[msg_available] perform nrom_by_bg()")
+                    self.am.dm.read_bg()
+                    self.am.dm.norm_by_bg()
+                    self.am.plot()
+
+ 
+
+    def _init_checkbox(self, master):
+        self.lcp = Label_CheckBox_Pair(master, self.am, "Normalize by Bg")
+        self.lcp.chk['state'] = DISABLED
+    
+
+
+    def _init_file_selector(self, master):
+        self.self_frame = tk.Frame(master,relief=tk.RAISED,borderwidth=1)
+        self.self_frame.pack(side=TOP,expand=True, fill="both")
+
+        def select_bg_file():
+            filetypes = (
+                ('All files', '*.*'),
+                ('text files', '*.txt')
+            )
+            filename = filedialog.askopenfilename(
+                title='Open a file',
+                initialdir='/',
+                filetypes=filetypes)
+
+            if(filename != ''):
+                self.am.dm.data_hdlr['bg_file_name'] = filename # This is found to be absolute path
+
+                print("[select_bg_file] data_hdlr['data_dir'] = ", self.am.dm.data_hdlr['data_dir'])
+                print("[select_bg_file] filename = ", filename)
+
+                data_dir = self.am.dm.data_hdlr['data_dir'].replace("/raw", "")
+                self.file_sel_btn['text'] = filename.replace(data_dir, "")[:45] + "..."
+
+                self.bg_readed = True
+                self.am.dm.read_bg()
+                self.am.dm.norm_by_bg()
+                self.am.plot()
+                self.am.print("Bg file opened: " + filename )
+        
+        self.file_sel_btn = Button(self.self_frame, text = "Select a bg file ...", command = select_bg_file)
+        self.file_sel_btn.pack(pady=5)
+        self.file_sel_btn["state"] = DISABLED
+
+    def _init_file_display(self, master):
+ 
+        
+      
+        label_left = tk.Label(master, text=" Bg File: " )
+        label_left.pack(side = LEFT)
+
+        label_right = tk.Label(master, text=self.am.dm.data_hdlr['bg_file_name'][:20] )
+        label_right.pack(side = RIGHT, pady=5)
+
+
 
 
 class File_Frame_Default():
@@ -347,22 +486,5 @@ class File_Frame_Plot_Q_vs_Power():
 
 
 
-
-class Label_CheckBox_Pair:
-    def __init__(self, master, am, name):
-        self.master = master
-        self.am = am
-        
-        self.frame = tk.Frame(self.master)
-        self.frame.pack(side=TOP, fill = "x")
-
-        self.value = tk.BooleanVar() 
-        self.value.set(True)
-         
-        self.chk = tk.Checkbutton(self.frame, text='', var=self.value) 
-        self.chk.pack(side = RIGHT)
-
-        self.name = tk.Label(self.frame, text=name, font=("Arial", 12))
-        self.name.pack(side = LEFT)
 
 
