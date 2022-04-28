@@ -116,12 +116,18 @@ class Session_Manager:
         
         
 
-            if(self.sessions.get(old)):
+            if(self.sessions.get(old)):# Just to check existence in dict()
                 self.sessions[new] = self.sessions[old]
                 self.sessions.pop(old)
+
             if(self.app.get(old)):
                 self.app[new] = self.app[old]
                 self.app.pop(old)
+
+                print("[sm.rename()] Before update am: self.app[new].tab_name = ", self.app[new].tab_name)
+                self.app[new].tab_name = new
+                print("[sm.rename()] After update am: self.app[new].tab_name = ", self.app[new].tab_name)
+
             
             
             self.popup.destroy()

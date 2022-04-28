@@ -19,11 +19,34 @@ class GUI_Manager:
         self.sm = Session_Manager(self.window, self)
         self._init_header_bar(tk.Frame(self.window, relief=tk.RAISED, borderwidth=2))
         #self._create_session()
-     
+        
+        self.subscriber = []
+
         self.window.update()
         #print("\nself.topFrame.winfo_width():",self.topFrame.winfo_width(),"\n")
-        
+        self.window.bind('<Control-z>', self.publish_ctrl_z)
+        self.window.bind('<Control-y>', self.publish_ctrl_y) 
         self.window.mainloop()
+        
+
+
+    #def undo(self, v):
+        #print("crtl-z detected, v.keysym = ", v.keysym)
+    def subscribe(self, object):
+        self.subscriber.append(object)
+
+    def publish_ctrl_z(self, _):
+        self.publish("ctrl_z pressed")
+    
+    def publish_ctrl_y(self, _):
+        self.publish("ctrl_y pressed")
+    
+    def publish(self, msg):
+        for object in self.subscriber:
+            object.msg_available(msg)
+
+
+
 
     def _init_header_bar(self, master):
         master.pack(fill=X)
@@ -93,7 +116,7 @@ class GUI_Manager:
         
  
     def _launch_default_application(self):
-        self.sm.app[self.sm.get_active()] = Default_Application_Manager(self.sm.sessions[self.sm.get_active()], self)
+        self.sm.app[self.sm.get_active()] = Default_Application_Manager(self.sm.sessions[self.sm.get_active()], self, self.sm)
         print("self.sm.active=",self.sm.get_active())
 
 

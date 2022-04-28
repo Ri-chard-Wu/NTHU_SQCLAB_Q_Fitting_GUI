@@ -27,17 +27,39 @@ SCALE_LEN = 290
 
 class Default_Application_Manager:
 
-    def __init__(self, master, gui_mngr):
+    def __init__(self, master, gui_mngr, sm):
         self.window = gui_mngr.window
         self.master = master
+        self.sm = sm
+        self.tab_name = self.sm.get_active()
         self.app_name = "default"
-        #self.gui_mngr = gui_mngr
+        self.gui_mngr = gui_mngr
 
         self.dm = Data_Manager(self)
+        self._init_subscribe_to_gui()
         self.subscriber = {}
         self._init_default_application()
-        
+        #self.window.bind('<Control-z>', self.undo)
+    #def undo(self, _):
+        #print("crtl-z detected")   
     
+    def _init_subscribe_to_gui(self):
+        self.gui_mngr.subscribe( self)
+    
+
+
+    def msg_available(self, msg): # between gui_mngr and am.
+        print("[msg_available()] self.tab_name = ", self.tab_name)
+        print("[msg_available()] self.sm.get_active() = ", self.sm.get_active())
+        if(self.sm.get_active() == self.tab_name):
+            if(msg == "ctrl_z pressed"):
+                self.print("[am.msg_available()] crtl-z detected.")
+                self.dm.undo()
+            elif(msg == "ctrl_y pressed"):
+                self.print("[am.msg_available()] crtl-y detected.")
+                self.dm.redo()
+
+
     def publish(self, msg):
         for name, obj in self.subscriber.items():
             obj.msg_available(msg)
@@ -366,8 +388,10 @@ class Default_Application_Manager:
         
         self.ax3[0].set_ylabel('Qi')
         self.ax3[0].set_xlabel('Power (dBm)')
+
         print("[plot_Q()] powers = ", powers)
         print("[plot_Q()] Q['Qi'] = ", Q['Qi'])
+        
         self.ax3[0].plot(powers, Q['Qi'], marker=cut_star)
 
         self.ax3[1].set_ylabel('Qe')

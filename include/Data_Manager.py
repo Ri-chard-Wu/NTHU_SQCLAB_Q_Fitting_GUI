@@ -30,7 +30,8 @@ data_hdlr = {'data_sel': 3,
         'bg':{
             'R':0,
             'I':0
-        }
+        },
+
  
         
         }
@@ -75,6 +76,7 @@ para = {
             'Q':{'Qi':0,
              'Qe':0,
              'Qtot':0},
+  
               }
         
 
@@ -85,45 +87,8 @@ para = {
 class Data_Struct:
     def __init__(self):
         self.para = copy.deepcopy(para)
-
-        '''self.para = {     
-        'p':{'Qe':10*10**4,
-             'Qi': 35*10**4,
-             'f0': 0, #6.59177*10**9,
-             #'df': 6.59177*10**9,
-             'tau': -105,
-             'a': 0.0041,
-             'alpha': -100.98,
-             'Ic': 0.0004,
-             'Rc': 0.0004},
+        self.queue = {'v':[], 'nav':-1}
         
-        '%_std':{},
-        
-        'LB':{'Qe':5*10**4,
-              'Qi':20*10**4,
-              'f0':0,
-              #'df':10**8,
-              'tau':-200,
-              'a':-10,
-              'alpha':-120,
-              'Ic':-10,
-              'Rc':-10},
-        
-        'UB':{'Qe':30*10**4,
-              'Qi':70*10**4,
-              'f0':10**11,
-              #'df':10**10,
-              'tau':200,
-              'a':10,
-              'alpha':100,
-              'Ic':10,
-              'Rc':10},
-        'DISCARD_LEFT': 600,
-        'DISCARD_RIGHT': 600,
-            'Q':{'Qi':0,
-             'Qe':0,
-             'Qtot':0},
-              }'''
         
 
         for (k,v) in self.para['p'].items(): # init percentage std for each para to 0.
@@ -138,6 +103,9 @@ class Data_Manager():
         self.data_hdlr = copy.deepcopy(data_hdlr)
         self.ds = {}
         self.am = am
+        self.queue = {'v':[], 'nav':-1}
+
+
 
 
     def save_para(self):
@@ -301,6 +269,8 @@ class Data_Manager():
         print("self.ds.keys()", self.ds.keys())
         
         self.para = self.ds[power_selected].para
+        self.queue = self.ds[power_selected].queue
+
 
 
     def _init_powers(self):
@@ -342,21 +312,167 @@ class Data_Manager():
         self.data_hdlr['R'], self.data_hdlr['I'], self.data_hdlr['f'] = R, I, f
         
 
+    def enqueue(self, para):
+ 
+        if(self.queue['nav'] < 19):
+
+            # if self.queue['nav'] is not pointing at the lastest item
+            if(self.queue['nav']  < len(self.queue['v']) - 1):
+                i = self.queue['nav'] + 1
+                while(i <= len(self.queue['v']) - 1):
+                    self.queue['v'].pop(i)
+
+            self.queue['nav'] += 1
+        else:
+            self.queue['v'].pop(0)
+
+        self.queue['v'].insert(self.queue['nav'], copy.deepcopy(self.para))
 
 
+    def undo(self):
+      
+
+        if(self.queue['nav'] <= 0):
+            print("[dm.undo()] no previous fitting step to go back to!")
+            self.am.print("[dm.undo()] Cannot undo: No previous fitting step to go back!")
+            return
+        
+        self.queue['nav'] -= 1
+        self.am.print("[dm.undo()] Go back to previous fitting step: " + str(self.queue['nav'] + 1) + "/20")
+        self.para = copy.deepcopy(self.queue['v'][self.queue['nav']])
+        
+        self.am.plot()
+        print("[dm.undo()] After poping last item: len(self.queue['v']) = ", len(self.queue['v']))
+
+    def redo(self):
+        #print("[dm.redo()] Before poping last item: len(self.queue['v']) = ", len(self.queue['v']))
+        if(self.queue['nav'] + 1 > len(self.queue['v']) - 1):
+            print("[dm.redo()] Alread at lastest fitting step!")
+            self.am.print("[dm.redo()]  Cannot redo: Alread at lastest fitting step!")
+            return
+        
+        self.queue['nav'] += 1
+        self.am.print("[dm.redo()] Go to next fitting step: "+str(self.queue['nav'] + 1)+ "/20")
+        self.para = copy.deepcopy(self.queue['v'][self.queue['nav']])
+        
+        self.am.plot()
+        #print("[dm.undo()] After poping last item: len(self.queue['v']) = ", len(self.queue['v']))
+
+    '''def enqueue(self, para):
+        #self.queue = self.para['queue']
+        #self.queue_nav = self.para['queue_nav']
+
+        # 0 <= self.queue_nav <= 19
+        if(self.queue_nav < 19):
+
+            # if self.queue_nav is not pointing at the lastest item
+            if(self.queue_nav  < len(self.queue) - 1):
+                i = self.queue_nav + 1
+                while(i <= len(self.queue) - 1):
+                    self.queue.pop(i)
+
+            self.queue_nav += 1
+        else:
+            self.queue.pop(0)
+
+        self.queue.insert(self.queue_nav, copy.deepcopy(self.para))
+
+
+    def undo(self):
+      
+
+        if(self.queue_nav <= 0):
+            print("[dm.undo()] no previous fitting step to go back to!")
+            self.am.print("[dm.undo()] Cannot undo: No previous fitting step to go back!")
+            return
+        
+        self.queue_nav -= 1
+        self.am.print("[dm.undo()] Go back to previous fitting step: " + str(self.queue_nav + 1) + "/20")
+        self.para = copy.deepcopy(self.queue[self.queue_nav])
+        
+        self.am.plot()
+        print("[dm.undo()] After poping last item: len(self.queue) = ", len(self.queue))
+
+    def redo(self):
+        #print("[dm.redo()] Before poping last item: len(self.queue) = ", len(self.queue))
+        if(self.queue_nav + 1 > len(self.queue) - 1):
+            print("[dm.redo()] Alread at lastest fitting step!")
+            self.am.print("[dm.redo()]  Cannot redo: Alread at lastest fitting step!")
+            return
+        
+        self.queue_nav += 1
+        self.am.print("[dm.redo()] Go to next fitting step: "+str(self.queue_nav + 1)+ "/20")
+        self.para = copy.deepcopy(self.queue[self.queue_nav])
+        
+        self.am.plot()
+        #print("[dm.undo()] After poping last item: len(self.queue) = ", len(self.queue))
+    '''
+
+    '''
+    def enqueue(self, para):
+        #self.para['queue'] = self.para['queue']
+        #self.para['queue_nav'] = self.para['queue_nav']
+
+        # 0 <= self.para['queue_nav'] <= 19
+        if(self.para['queue_nav'] < 19):
+
+            # if self.para['queue_nav'] is not pointing at the lastest item
+            if(self.para['queue_nav']  < len(self.para['queue']) - 1):
+                i = self.para['queue_nav'] + 1
+                while(i <= len(self.para['queue']) - 1):
+                    self.para['queue'].pop(i)
+
+            self.para['queue_nav'] += 1
+        else:
+            self.para['queue'].pop(0)
+
+        self.para['queue'].insert(self.para['queue_nav'], copy.deepcopy(self.para))
+
+
+
+    def undo(self):
+      
+
+        if(self.para['queue_nav'] <= 0):
+            print("[dm.undo()] no previous fitting step to go back to!")
+            self.am.print("[dm.undo()] Cannot undo: No previous fitting step to go back!")
+            return
+        
+        self.para['queue_nav'] -= 1
+        self.am.print("[dm.undo()] Go back to previous fitting step: " + str(self.para['queue_nav'] + 1) + "/20")
+        self.para = copy.deepcopy(self.para['queue'][self.para['queue_nav']])
+        
+        self.am.plot()
+        print("[dm.undo()] After poping last item: len(self.para['queue']) = ", len(self.para['queue']))
+
+    def redo(self):
+        #print("[dm.redo()] Before poping last item: len(self.para['queue']) = ", len(self.para['queue']))
+        if(self.para['queue_nav'] + 1 > len(self.para['queue']) - 1):
+            print("[dm.redo()] Alread at lastest fitting step!")
+            self.am.print("[dm.redo()]  Cannot redo: Alread at lastest fitting step!")
+            return
+        
+        self.para['queue_nav'] += 1
+        self.am.print("[dm.redo()] Go to next fitting step: "+str(self.para['queue_nav'] + 1)+ "/20")
+        self.para = copy.deepcopy(self.para['queue'][self.para['queue_nav']])
+        
+        self.am.plot()
+        #print("[dm.undo()] After poping last item: len(self.para['queue']) = ", len(self.para['queue']))    
+    '''
     def Fit(self, op=""):
         def check_bounds(p, LB, UB):
             for name, v in p.items():
                 if(p[name] < LB[name]):
                     p[name] = LB[name]
                     self.am.print("[Warning] para value < LB detected for the parameter: "+ name + ". Automatically set para value = LB")
-                elif(p[name] > UB[name]):
-                    p[name] = UB[name]
-                    self.am.print("[Warning] para value > UB detected for the parameter: " + name + ". Automatically set para value = UB")
+                if(p[name] > UB[name]):
+                    UB[name] = p[name]
+                    self.am.print("[Warning] para value > UB detected for the parameter: " + name + ". Automatically set  UB = para value")
             return p, LB, UB
 
         R, I, f = self.data_hdlr['R'], self.data_hdlr['I'], self.data_hdlr['f']
 
+        
         para = self.para
         para['p'], para['LB'], para['UB'] = check_bounds(copy.deepcopy(para['p']), 
                                                          copy.deepcopy(para['LB']), 
@@ -385,7 +501,8 @@ class Data_Manager():
         for k in self.para['p'].keys():
             self.para['p'][k] = p[i]
             i+=1
-            
+        
+        self.enqueue(self.para)
         return self.para
 
 
